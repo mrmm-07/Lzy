@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8"/>
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+ <meta name="apple-mobile-web-app-capable" content="yes"/>
+ <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+ <meta name="theme-color" content="#0a0a0a"/>
+ <title>Lzy</title>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+ <style>
+ *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ html, body { height: 100%; background: #0a0a0a; color: #f0ede8; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent; }
+ body { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+ button { border: none; cursor: pointer; font-family: inherit; }
+ input, textarea, select { font-family: inherit; }
+ #root { min-height: 100%; }
+ ::-webkit-scrollbar { display: none; }
+ * { -ms-overflow-style: none; scrollbar-width: none; }
+ </style>
+</head>
+<body>
+ <div id="root"></div>
+ <script type="text/babel">
+
+// ── SETUP SCREEN ─────────────────────────────────────────────
+function SetupScreen({ onComplete }) {
+ const [step, setStep] = React.useState(0);
+ const [form, setForm] = React.useState({
+ startWeight: "", goalWeight: "", heightFt: "", heightIn: "", age: "", sex: "male", wkTime: "morning"
+ });
+ const [err, setErr] = React.useState("");
+
+ const upd = (k, v) => setForm(f => ({...f, [k]: v}));
+
+ function validateAndNext() {
+ setErr("");
+ if (step === 0) {
+ const sw = parseFloat(form.startWeight), gw = parseFloat(form.goalWeight);
+ if (!sw || sw < 80 || sw > 500) return setErr("Enter a valid current weight (80–500 lbs)");
+ if (!gw || gw < 80 || gw > 500) return setErr("Enter a valid goal weight (80–500 lbs)");
+ if (gw >= sw) return setErr("Goal weight should be less than current weight");
+ }
+ if (step === 1) {
+ const ft = parseInt(form.heightFt), inches = parseInt(form.heightIn||0);
+ const age = parseInt(form.age);
+ if (!ft || ft < 4 || ft > 7) return setErr("Enter a valid height (4–7 ft)");
+ if (isNaN(inches) || inches < 0 || inches > 11) return setErr("Inches should be 0–11");
+ if (!age || age < 16 || age > 80) return setErr("Enter a valid age (16–80)");
+ }
+ if (step < 2) { setStep(s => s+1); return; }
+ // Complete
+ const ft = parseInt(form.heightFt), inches = parseInt(form.heightIn||0);
+ const heightCm = Math.round((ft * 30.48) + (inches * 2.54));
+ onComplete({
+ startWeight: parseFloat(form.startWeight),
+ goalWeight: parseFloat(form.goalWeight),
+ heightCm,
+ age: parseInt(form.age),
+ sex: form.sex,
+ wkTime: form.wkTime,
+ });
+ }
+
+ const S2 = {
+ page: {minHeight:"100vh",background:"#0a0a0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 24px",fontFamily:"-apple-system,BlinkMacSystemFont,sans-serif"},
+ card: {width:"100%",maxWidth:380,background:"#111",borderRadius:20,padding:28,border:"1px solid #1e1e1e"},
+ label: {fontSize:11,letterSpacing:2,color:"#8a7c6e",textTransform:"uppercase",marginBottom:8,display:"block",fontWeight:700},
+ input: {width:"100%",background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:12,padding:"14px 16px",color:"#f0ede8",fontSize:17,fontFamily:"inherit",marginBottom:16,display:"block"},
+ btn: {width:"100%",padding:16,borderRadius:14,background:"#ff6a00",color:"#0a0a0a",fontWeight:800,fontSize:16,letterSpacing:1},
+ err: {color:"#cc4444",fontSize:13,marginBottom:12,textAlign:"center"},
+ step: {fontSize:10,color:"#555",letterSpacing:2,textTransform:"uppercase",marginBottom:6,textAlign:"center"},
+ title: {fontSize:28,fontWeight:800,color:"#f0ede8",marginBottom:4},
+ sub: {fontSize:13,color:"#8a7c6e",marginBottom:24,lineHeight:1.6},
+ };
+
+ return (
+ <div style={S2.page}>
+ <div style={{fontSize:48,marginBottom:16}}></div>
+ <div style={{...S2.title,textAlign:"center"}}>Lzy</div>
+ <div style={{...S2.sub,textAlign:"center",marginBottom:32}}>Nippard × Huberman · 3 days/week</div>
+ <div style={S2.card}>
+ <div style={S2.step}>Step {step+1} of 3</div>
+ {/* Progress bar */}
+ <div style={{height:3,background:"#1a1a1a",borderRadius:3,marginBottom:24}}>
+ <div style={{height:3,background:"#ff6a00",borderRadius:3,width:`${((step+1)/3)*100}%`,transition:"width 0.3s"}}/>
+ </div>
+
+ {step === 0 && (<>
+ <div style={{...S2.title,fontSize:20,marginBottom:6}}>Your weights</div>
+ <div style={{...S2.sub,fontSize:12}}>This stays on your device only — never uploaded anywhere.</div>
+ <label style={S2.label}>Current weight (lbs)</label>
+ <input style={S2.input} type="number" placeholder="Current lbs" value={form.startWeight}
+ onChange={e=>upd("startWeight",e.target.value)} inputMode="decimal"/>
+ <label style={S2.label}>Goal weight (lbs)</label>
+ <input style={S2.input} type="number" placeholder="Goal lbs" value={form.goalWeight}
+ onChange={e=>upd("goalWeight",e.target.value)} inputMode="decimal"/>
+ </>)}
+
+ {step === 1 && (<>
+ <div style={{...S2.title,fontSize:20,marginBottom:6}}>About you</div>
+ <div style={{...S2.sub,fontSize:12}}>Used to calculate your calorie targets. Stays on your device.</div>
+ <label style={S2.label}>Height</label>
+ <div style={{display:"flex",gap:10,marginBottom:16}}>
+ <input style={{...S2.input,marginBottom:0,flex:1}} type="number" placeholder="ft"
+ value={form.heightFt} onChange={e=>upd("heightFt",e.target.value)} inputMode="numeric"/>
+ <input style={{...S2.input,marginBottom:0,flex:1}} type="number" placeholder="in"
+ value={form.heightIn} onChange={e=>upd("heightIn",e.target.value)} inputMode="numeric"/>
+ </div>
+ <label style={S2.label}>Age</label>
+ <input style={S2.input} type="number" placeholder="Your age" value={form.age}
+ onChange={e=>upd("age",e.target.value)} inputMode="numeric"/>
+ <label style={S2.label}>Sex (for calorie formula)</label>
+ <div style={{display:"flex",gap:10,marginBottom:16}}>
+ {["male","female"].map(s => (
+ <button key={s} onClick={()=>upd("sex",s)}
+ style={{flex:1,padding:12,borderRadius:10,background:form.sex===s?"#ff6a00":"#1a1a1a",
+ color:form.sex===s?"#0a0a0a":"#8a7c6e",fontWeight:700,fontSize:13,border:"1px solid #2a2a2a",
+ textTransform:"capitalize"}}>
+ {s}
+ </button>
+ ))}
+ </div>
+ </>)}
+
+ {step === 2 && (<>
+ <div style={{...S2.title,fontSize:20,marginBottom:6}}>Workout timing</div>
+ <div style={{...S2.sub,fontSize:12}}>When do you usually train? Affects your meal schedule.</div>
+ <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+ {[["morning","☀️ Morning (7–8am)","Pre-workout breakfast, post-workout lunch"],
+ ["evening","🌙 Evening (5–6pm)","Bigger lunch, pre/post-workout dinner"]].map(([val,label,desc])=>(
+ <button key={val} onClick={()=>upd("wkTime",val||"morning")}
+ style={{padding:"14px 16px",borderRadius:12,background:form.wkTime===val?"#1a0d00":"#1a1a1a",
+ color:"#f0ede8",border:form.wkTime===val?"1px solid #ff6a00":"1px solid #2a2a2a",
+ textAlign:"left"}}>
+ <div style={{fontWeight:700,fontSize:14,color:form.wkTime===val?"#ff6a00":"#f0ede8"}}>{label}</div>
+ <div style={{fontSize:11,color:"#8a7c6e",marginTop:3}}>{desc}</div>
+ </button>
+ ))}
+ </div>
+ </>)}
+
+ {err && <div style={S2.err}>{err}</div>}
+ <button style={S2.btn} onClick={validateAndNext}>
+ {step < 2 ? "Continue →" : "Let's Go "}
+ </button>
+ {step > 0 && (
+ <button onClick={()=>setStep(s=>s-1)}
+ style={{width:"100%",padding:12,background:"none",color:"#555",fontSize:13,marginTop:8}}>
+ ← Back
+ </button>
+ )}
+ </div>
+ <div style={{fontSize:10,color:"#333",marginTop:20,textAlign:"center",lineHeight:1.8}}>
+ All data saved locally on your device.<br/>Nothing is sent to any server.
+ </div>
+ </div>
+ );
+}
+
+
+// ── PERSISTENT STORAGE — localStorage ───────────────────────
+// Works in any real browser. Data stays on your device only.
+
+function storageGet(key) {
+ try {
+ const v = localStorage.getItem(key);
+ return v !== null ? JSON.parse(v) : null;
+ } catch { return null; }
+}
+
+function storageSet(key, val) {
+ try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+function usePersist(key, init) {
+ const [val, setVal] = React.useState(() => {
+ const stored = storageGet(key);
+ return stored !== null ? stored : init;
+ });
+
+ const set = React.useCallback((newVal) => {
+ setVal(prev => {
+ const resolved = typeof newVal === "function" ? newVal(prev) : newVal;
+ storageSet(key, resolved);
+ return resolved;
+ });
+ }, [key]);
+
+ return [val, set, true];
+}
+
+// ── STATS — all user-specific values come from localStorage ──
+const STEP_GOAL = 8000;
+
+function calcBMR(w, heightCm, age, sex) {
+ const kg = w * 0.453592;
+ const offset = (sex === "female") ? -161 : 5;
+ return Math.round((10*kg) + (6.25*heightCm) - (5*age) + offset);
+}
+function calcTDEE(w, h, a, sex) { return Math.round(calcBMR(w,h,a,sex)*1.375); }
+function calcTrainingDayCals(w,h,a,sex){ return Math.round(calcTDEE(w,h,a,sex)*0.92); }
+function calcRestDayCals(w,h,a,sex) { return Math.round(calcTDEE(w,h,a,sex)*0.72); }
+function calcMilestones(start, goal) {
+ const milestones = [];
+ let m = Math.ceil(goal/5)*5;
+ while (m <= start) { milestones.unshift(m); m += 15; }
+ if (!milestones.includes(goal)) milestones.unshift(goal);
+ return [...new Set(milestones)].sort((a,b)=>b-a);
+}
+
+// ── MEAL DATA ────────────────────────────────────────────────
+const MEAL_SCHEDULES = {
+ morning: { label:"Morning workout (7–8am)", meals:[
+ {time:"7:00 AM",name:"Pre-Workout Meal",tag:"PRE",tagColor:"#ff6a00",cals:500,protein:45,carbs:55,note:"Nippard: pre-workout is the most important meal. High protein + carbs, low fat/fiber so digestion doesn't slow you down.",options:[{name:"Greek yogurt + banana + handful of granola",p:25,c:50,cal:380},{name:"2 eggs scrambled + 2 slices toast + OJ",p:20,c:55,cal:410},{name:"Protein shake (1 scoop) + 1 cup oats + berries",p:35,c:55,cal:450}]},
+ {time:"10:00 AM",name:"Post-Workout Meal",tag:"POST",tagColor:"#4a8a4a",cals:600,protein:50,carbs:60,note:"Within the 4–5hr anabolic window. Protein + carbs to kick off recovery. This is when your muscles are most receptive.",options:[{name:"Ground turkey + rice + hot sauce (Nippard's go-to)",p:45,c:55,cal:520},{name:"Rotisserie chicken + microwavable rice + apple",p:48,c:50,cal:530},{name:"Tuna wrap: canned tuna + tortilla + mustard + tomato",p:42,c:38,cal:420}]},
+ {time:"1:00 PM",name:"Lunch",tag:"MEAL 3",tagColor:"#555",cals:550,protein:45,carbs:40,note:"Keep it simple. Protein + veggies + some carbs. This is your biggest opportunity to hit your protein target.",options:[{name:"Deli turkey sandwich + greek yogurt + cucumber",p:42,c:45,cal:500},{name:"Cottage cheese + canned salmon + crackers + fruit",p:48,c:30,cal:480},{name:"Chicken breast (Costco precooked) + rice + frozen veggies",p:50,c:45,cal:520}]},
+ {time:"6:30 PM",name:"Dinner",tag:"MEAL 4",tagColor:"#555",cals:600,protein:50,carbs:45,note:"Biggest meal for most people. High protein, moderate carbs. Keep fat reasonable — you still need it for hormones.",options:[{name:"Lean ground beef tacos (2) + side salad",p:45,c:40,cal:580},{name:"Baked salmon + sweet potato + steamed broccoli",p:48,c:38,cal:540},{name:"Pork tenderloin + pasta + marinara + parmesan",p:52,c:55,cal:620}]},
+ {time:"9:00 PM",name:"Pre-Sleep Snack",tag:"OPTIONAL",tagColor:"#5599cc",cals:200,protein:30,carbs:15,note:"Huberman + Nippard both: casein-type protein before bed feeds muscle repair during sleep. Only do this if it doesn't hurt sleep.",options:[{name:"1 cup cottage cheese + a few berries",p:28,c:12,cal:185},{name:"Greek yogurt (plain, full fat) + honey drizzle",p:18,c:16,cal:180},{name:"Casein protein shake + splash of milk",p:30,c:10,cal:200}]},
+ ]},
+ evening: { label:"Evening workout (5–6pm)", meals:[
+ {time:"8:00 AM",name:"Breakfast (delayed)",tag:"MEAL 1",tagColor:"#555",cals:500,protein:40,carbs:50,note:"Huberman: delay first meal 1–2 hrs after waking if you can. Extends overnight fast, improves insulin sensitivity.",options:[{name:"3 eggs + 2 slices toast + banana",p:30,c:50,cal:450},{name:"Protein oatmeal: oats + protein powder + PB + berries",p:35,c:55,cal:470},{name:"Greek yogurt parfait + granola + fruit",p:28,c:52,cal:420}]},
+ {time:"12:30 PM",name:"Lunch",tag:"MEAL 2",tagColor:"#555",cals:600,protein:50,carbs:50,note:"Mid-day protein hit. You want at least 40g here. Don't skip — it's easy to under-eat protein early and scramble at night.",options:[{name:"Rotisserie chicken + rice + salad + dressing",p:50,c:45,cal:560},{name:"Large deli wrap: turkey + cheese + avocado + veggies",p:42,c:48,cal:580},{name:"Ground beef bowl: beef + rice + black beans + salsa",p:52,c:55,cal:620}]},
+ {time:"4:00 PM",name:"Pre-Workout Meal",tag:"PRE",tagColor:"#ff6a00",cals:450,protein:40,carbs:55,note:"1–1.5 hrs before training. Keep fat/fiber low so you don't feel sluggish. Carbs are your fuel here.",options:[{name:"Protein shake + banana + rice cakes (2)",p:35,c:52,cal:420},{name:"Low-fat greek yogurt + apple + handful of pretzels",p:22,c:55,cal:380},{name:"Chicken breast + white rice (no veggies — fiber slows digestion)",p:42,c:48,cal:420}]},
+ {time:"7:00 PM",name:"Post-Workout Dinner",tag:"POST",tagColor:"#4a8a4a",cals:650,protein:55,carbs:55,note:"Post-workout + dinner combined. This is your biggest meal. Load the protein. You've earned the carbs.",options:[{name:"Salmon + white rice + roasted veggies + lemon",p:52,c:50,cal:620},{name:"Lean ground beef + pasta + marinara + side salad",p:50,c:58,cal:660},{name:"Chicken thighs + sweet potato + green beans",p:55,c:45,cal:590}]},
+ {time:"9:30 PM",name:"Pre-Sleep Snack",tag:"OPTIONAL",tagColor:"#5599cc",cals:200,protein:30,carbs:15,note:"Nippard: research supports pre-sleep protein for muscle repair. Only if it doesn't disrupt sleep quality.",options:[{name:"1 cup cottage cheese + a few berries",p:28,c:12,cal:185},{name:"Greek yogurt (plain, full fat) + honey drizzle",p:18,c:16,cal:180},{name:"Casein protein shake",p:30,c:8,cal:190}]},
+ ]},
+};
+
+// ── WORKOUT PLANS ────────────────────────────────────────────
+// stepLogs format: { "date": { regular:N, ruck:N, ruckMiles:N|null } }
+
+// Shared cardio menu
+const CARDIO = [
+  {id:"w",name:"Brisk Walk",duration:"20–30 min",intensity:"Zone 2",tag:null,tip:"Huberman's #1 pick. Conversational pace — you can talk but not sing. Doubles as mental health medicine."},
+  {id:"s",name:"Walk/Jog Intervals",duration:"20 min",intensity:"Zone 2–3",tag:null,tip:"2 min walk, 1 min light jog. Repeat 6–7 rounds. Builds cardio without frying your recovery."},
+  {id:"b",name:"Stationary Bike",duration:"25 min",intensity:"Zone 2",tag:null,tip:"Put on Netflix. Moderate resistance. The laziest effective cardio — you're basically just sitting."},
+  {id:"j",name:"Jump Rope",duration:"10 min",intensity:"Zone 3",tag:null,tip:"30 sec on, 30 sec off × 10. Burns more calories per minute than jogging. Short but brutal."},
+  {id:"r1",name:"Beginner Ruck",duration:"30 min",intensity:"Zone 2",tag:"RUCK",tip:"10 lb backpack, flat ground, comfortable pace. Harder than it sounds after 20 min.",ruckDetail:{weight:"10 lbs",distance:"1.5–2 miles",terrain:"Flat",calBurn:"~280 cal",progression:"Add 5 lbs every 2 weeks once it feels easy"}},
+  {id:"r2",name:"Intermediate Ruck",duration:"45 min",intensity:"Zone 2–3",tag:"RUCK",tip:"20–25 lb pack, mix of flat and hills. Weighted carries spike norepinephrine — great for mood and focus.",ruckDetail:{weight:"20–25 lbs",distance:"2.5–3 miles",terrain:"Mixed/hills",calBurn:"~420 cal",progression:"Increase distance before adding more weight"}},
+  {id:"r3",name:"Heavy Ruck",duration:"60 min",intensity:"Zone 3",tag:"RUCK",tip:"30–35 lb pack, hilly terrain. Burns 500+ cal/hr — same as running, fraction of the joint stress.",ruckDetail:{weight:"30–35 lbs",distance:"3–4 miles",terrain:"Hilly",calBurn:"~520 cal",progression:"Focus on pace — aim for 15 min/mile"}},
+];
+
+// Exercise library shorthand
+const ex = (id,name,sets,lo,hi,sw,inc,wu,cue,alts=[])=>({id,name,sets,repsLow:lo,repsHigh:hi,startWeight:sw,increment:inc,warmupPct:wu,cue,alternatives:alts});
+const alt = (id,name,sw,inc,wu,cue)=>({id,name,startWeight:sw,increment:inc,warmupPct:wu,cue});
+
+const PLANS = [
+
+  // ── PPL 3-day ──────────────────────────────────────────────
+  { id:"ppl3", name:"Push / Pull / Legs", short:"PPL · 3 days/week", daysPerWeek:3,
+    desc:"The classic evidence-based split. Each muscle group trained once per week with full recovery. Best starting point.",
+    schedule:["A","rest","B","rest","C","cardio","rest"],
+    days:[
+      {id:"A",name:"Push Day",subtitle:"Chest · Shoulders · Triceps",
+       note:"Control the eccentric (lowering) for 2 seconds on every rep. That's where most muscle growth happens.",
+       exercises:[
+        ex("p3_bp","DB Bench Press",3,8,12,30,2.5,0.5,"Retract scapula, slight arch. Press up and slightly inward at the top.",[alt("p3_bp_a1","Floor Press",25,2.5,0.5,"Upper arms rest on ground at bottom. Great if you don't have a bench."),alt("p3_bp_a2","Push-Up (weighted)",0,0,0,"Add a backpack for load. Full chest-to-floor range."),alt("p3_bp_a3","DB Squeeze Press",25,2.5,0.5,"Press DBs together throughout. Constant chest squeeze.")]),
+        ex("p3_ip","Incline DB Press",3,8,12,25,2.5,0.5,"30–45° incline hits upper chest. Don't go higher or it becomes a shoulder press.",[alt("p3_ip_a1","Incline Push-Up",0,0,0,"Feet elevated on bench, hands on floor. Mimics incline angle."),alt("p3_ip_a2","DB Chest Fly",15,2.5,0,"Wide arc down, squeeze up. Focus on the stretch at the bottom.")]),
+        ex("p3_op","DB Overhead Press",3,8,12,20,2.5,0.5,"Seated, neutral grip. Keep elbows slightly forward of your torso.",[alt("p3_op_a1","Arnold Press",17.5,2.5,0.5,"Rotate palms from facing you to forward as you press. Hits all three delt heads."),alt("p3_op_a2","Pike Push-Up",0,0,0,"Hips high in an inverted V. Lower head toward floor.")]),
+        ex("p3_lf","DB Lateral Raise",3,12,20,10,2.5,0,"Slow and controlled. Lead with elbows, slight forward lean. Go lighter than you think.",[alt("p3_lf_a1","DB Upright Row",15,2.5,0,"Pull elbows up and out. Hits side delts + traps. Stop at chin height.")]),
+        ex("p3_te","DB Tricep Overhead Ext",3,10,15,15,2.5,0,"Long head fully stretched overhead. Keep elbows close to your head.",[alt("p3_te_a1","DB Skull Crusher",15,2.5,0,"Lower DBs toward forehead, extend back up. Good if overhead bothers shoulders."),alt("p3_te_a2","Diamond Push-Up",0,0,0,"Hands close together in diamond shape. Pure tricep.")]),
+      ]},
+      {id:"B",name:"Pull Day",subtitle:"Back · Biceps · Rear Delts",
+       note:"Think about pulling your elbow to your hip, not just lifting the weight. Your back does the work.",
+       exercises:[
+        ex("p3_dr","DB Row (each arm)",3,8,12,35,2.5,0.5,"Brace on the bench. Pull elbow back and slightly up. Pause 1 second at the top.",[alt("p3_dr_a1","Chest-Supported Row",25,2.5,0.5,"Lie chest-down on incline bench. Removes lower back from the equation."),alt("p3_dr_a2","Two-DB Bent-Over Row",25,2.5,0.5,"Both arms at once, hinge 45°. More loading on lower back — brace hard.")]),
+        ex("p3_pc","DB Pullover",3,10,12,25,2.5,0.5,"Great lat stretch. Keep a slight elbow bend. Feel the stretch at the bottom.",[alt("p3_pc_a1","Straight-Arm Pulldown (band)",0,0,0,"Anchor a band high. Arms straight, pull down to hips. Isolates lats.")]),
+        ex("p3_bc","DB Bicep Curl",3,10,15,17.5,2.5,0,"Supinate (rotate palm up) as you curl. Full range — don't cut short at the bottom.",[alt("p3_bc_a1","Incline DB Curl",12.5,2.5,0,"Arms hang behind torso on incline. Best stretch position for biceps."),alt("p3_bc_a2","Concentration Curl",15,2.5,0,"Elbow braced on inner thigh. Great for mind-muscle connection.")]),
+        ex("p3_hc","Hammer Curl",3,10,15,17.5,2.5,0,"Neutral grip targets brachialis — makes arms look thicker from the side.",[alt("p3_hc_a1","Cross-Body Hammer Curl",17.5,2.5,0,"Curl across your body toward opposite shoulder.")]),
+        ex("p3_rd","Bent-Over Rear Delt Fly",3,12,15,10,2.5,0,"Hinge 45° forward, slight elbow bend. Lead with elbows, not hands. Very light.",[alt("p3_rd_a1","Face Pull (band)",0,0,0,"Anchor band at face height. Pull toward face, elbows high and wide.")]),
+      ]},
+      {id:"C",name:"Leg Day",subtitle:"Quads · Hamstrings · Glutes",
+       note:"Legs are your biggest muscle group — they burn the most calories and release the most anabolic hormones.",
+       exercises:[
+        ex("p3_gs","Goblet Squat",3,10,15,40,2.5,0.5,"DB at chest. Elbows inside knees at the bottom. Heels shoulder-width, toes slightly out.",[alt("p3_gs_a1","Sumo Squat",35,2.5,0.5,"Wide stance, toes out ~45°. DB hangs between legs. More inner quad."),alt("p3_gs_a2","Bulgarian Split Squat",20,2.5,0,"Rear foot elevated on bench. Start light — this humbles everyone.")]),
+        ex("p3_rl","Romanian Deadlift",3,8,12,35,2.5,0.5,"Hip hinge, not squat. Push hips back, feel the hamstring stretch. Weight stays close to legs.",[alt("p3_rl_a1","Single-Leg RDL",20,2.5,0.5,"Balance on one leg, hinge forward. Great for hamstrings and balance.")]),
+        ex("p3_ls","DB Lunge (each leg)",3,10,12,20,2.5,0,"Step forward, lower back knee toward floor. Keep torso upright. Front knee tracks over toes.",[alt("p3_ls_a1","Reverse Lunge",20,2.5,0,"Step backward instead. Easier on the knees for most people.")]),
+        ex("p3_hb","DB Hip Thrust",3,12,15,40,2.5,0,"Shoulders on bench, DB on hips. Drive hips up, squeeze glutes hard at the top.",[alt("p3_hb_a1","Glute Bridge (floor)",35,2.5,0,"Same movement on the floor. Less range but still effective.")]),
+        ex("p3_cc","Calf Raise (on step)",3,15,25,0,0,0,"Full range — all the way down for a stretch, all the way up on tiptoe. Slow. High reps.",[alt("p3_cc_a1","Single-Leg Calf Raise",0,0,0,"One foot at a time on step edge. Much harder than two legs.")]),
+      ]},
+    ]
+  },
+
+  // ── Upper/Lower 4-day ──────────────────────────────────────
+  { id:"ul4", name:"Upper / Lower", short:"Upper/Lower · 4 days/week", daysPerWeek:4,
+    desc:"Nippard's go-to intermediate split. Each muscle group trained twice per week — the sweet spot for hypertrophy frequency.",
+    schedule:["Upper","rest","Lower","rest","Upper","Lower","rest"],
+    days:[
+      {id:"Upper",name:"Upper Body",subtitle:"Chest · Back · Shoulders · Arms",
+       note:"Superset chest + back where possible to save time. 60–90 sec rest between supersets.",
+       exercises:[
+        ex("ul_bp","DB Bench Press",4,8,12,30,2.5,0.5,"2-second eccentric. Press up and slightly inward. Superset with rows.",[alt("ul_bp_a1","Floor Press",25,2.5,0.5,"Upper arms rest on ground at bottom.")]),
+        ex("ul_dr","DB Row (each arm)",4,8,12,35,2.5,0.5,"Pull elbow to hip. Pause 1 second at top. Superset with bench for efficiency.",[alt("ul_dr_a1","Chest-Supported Row",25,2.5,0.5,"Lie chest-down on incline. Removes lower back entirely.")]),
+        ex("ul_op","DB Overhead Press",3,8,12,20,2.5,0.5,"Seated. Elbows slightly forward of torso. Full lockout at top.",[alt("ul_op_a1","Arnold Press",17.5,2.5,0.5,"Rotation hits all three delt heads.")]),
+        ex("ul_pc","DB Pullover",3,10,12,25,2.5,0,"Lat stretch at the bottom. Slight elbow bend throughout.",[alt("ul_pc_a1","Straight-Arm Pulldown (band)",0,0,0,"Anchor band high, pull straight arms to hips.")]),
+        ex("ul_lf","DB Lateral Raise",3,15,20,10,2.5,0,"Lead with elbows. 3 seconds up, 3 seconds down.",[alt("ul_lf_a1","Leaning Lateral Raise",7.5,2.5,0,"Lean away from anchor. Pre-stretches the delt.")]),
+        ex("ul_bc","DB Bicep Curl",3,10,15,17.5,2.5,0,"Supinate as you curl. Full range — no half reps.",[alt("ul_bc_a1","Incline DB Curl",12.5,2.5,0,"Arms hang behind torso on incline. Best bicep stretch.")]),
+        ex("ul_te","DB Tricep Overhead Ext",3,10,15,15,2.5,0,"Keep elbows close to head. Long head fully stretched.",[alt("ul_te_a1","Diamond Push-Up",0,0,0,"Hands close together. Elbows stay tight to body.")]),
+      ]},
+      {id:"Lower",name:"Lower Body",subtitle:"Quads · Hamstrings · Glutes · Calves",
+       note:"Superset quads and hamstrings — they're antagonists, so one rests while the other works.",
+       exercises:[
+        ex("ul_gs","Goblet Squat",4,8,12,40,2.5,0.5,"Full depth. 3-second eccentric. Drive knees out. Superset with RDL.",[alt("ul_gs_a1","Bulgarian Split Squat",20,2.5,0,"Rear foot elevated. More unilateral quad emphasis.")]),
+        ex("ul_rl","Romanian Deadlift",4,8,12,35,2.5,0.5,"Hip hinge. Feel hamstring stretch. Superset with goblet squat.",[alt("ul_rl_a1","Single-Leg RDL",20,2.5,0.5,"One leg. Balance challenge plus great hamstring isolation.")]),
+        ex("ul_ls","DB Lunge (each leg)",3,10,12,20,2.5,0,"Front knee tracks toes. Lower back knee toward floor. Torso upright.",[alt("ul_ls_a1","Reverse Lunge",20,2.5,0,"Step backward. Easier on knees, more glute activation.")]),
+        ex("ul_hb","DB Hip Thrust",3,12,15,40,2.5,0,"Shoulders on bench. Heavy as possible. Squeeze glutes hard, hold 1 second at top.",[alt("ul_hb_a1","Glute Bridge (floor)",35,2.5,0,"On the floor. Add DB across hips.")]),
+        ex("ul_cc","Calf Raise (on step)",4,15,20,0,0,0,"Full ROM. Hold stretch at the bottom for 1 second. Calves need volume.",[alt("ul_cc_a1","Seated Calf Raise",25,2.5,0,"DB on knees. Targets the soleus — the deeper calf muscle.")]),
+      ]},
+    ]
+  },
+
+  // ── Full Body 3-day ────────────────────────────────────────
+  { id:"fb3", name:"Full Body", short:"Full Body · 3 days/week", daysPerWeek:3,
+    desc:"Best for beginners and busy schedules. Every session hits all major muscle groups. Maximum frequency, minimum sessions.",
+    schedule:["Full","rest","Full","rest","Full","cardio","rest"],
+    days:[
+      {id:"Full",name:"Full Body",subtitle:"Squat · Hinge · Push · Pull · Isolation",
+       note:"One movement per pattern, executed perfectly. Add load or reps every session. Keep rest to 90 seconds.",
+       exercises:[
+        ex("fb_sq","Goblet Squat",3,8,12,35,2.5,0.5,"Quad pattern. Full depth. DB at chest, elbows inside knees at the bottom.",[alt("fb_sq_a1","DB Step-Up",20,2.5,0,"Step onto sturdy surface. Drive through the heel of the front foot."),alt("fb_sq_a2","Bulgarian Split Squat",15,2.5,0,"Rear foot elevated. The hardest unilateral leg exercise.")]),
+        ex("fb_hinge","Romanian Deadlift",3,8,12,35,2.5,0.5,"Hip hinge pattern. Feel the hamstring stretch at the bottom. Weight stays close to legs.",[alt("fb_hinge_a1","DB Good Morning",20,2.5,0,"DBs on shoulders, hinge at hips. Hits hamstrings and lower back.")]),
+        ex("fb_push","DB Bench Press",3,8,12,30,2.5,0.5,"Horizontal push. 2-second eccentric. Press up and slightly inward at the top.",[alt("fb_push_a1","Push-Up (weighted)",0,0,0,"Add backpack for load. Full chest-to-floor range."),alt("fb_push_a2","DB Overhead Press",20,2.5,0.5,"Swap in for more shoulder emphasis.")]),
+        ex("fb_pull","DB Row (each arm)",3,8,12,30,2.5,0.5,"Horizontal pull. Elbow to hip. Pause at top. Your back does the work.",[alt("fb_pull_a1","DB Pullover",22.5,2.5,0,"Lat stretch at the bottom. Great vertical pull alternative."),alt("fb_pull_a2","Chest-Supported Row",25,2.5,0.5,"Lie on incline bench. Completely removes lower back.")]),
+        ex("fb_lf","DB Lateral Raise",3,12,20,10,2.5,0,"Side delts give width. Slow, controlled. Lead with elbows. Light weight.",[alt("fb_lf_a1","Bent-Over Rear Delt Fly",10,2.5,0,"Hinge forward, elbows wide. Hits rear delts and upper back.")]),
+        ex("fb_hb","DB Hip Thrust",3,12,15,35,2.5,0,"Glute isolation at the end. Shoulders on bench, DB on hips. Squeeze hard at the top.",[alt("fb_hb_a1","Glute Bridge (floor)",30,2.5,0,"Floor version. Add DB for resistance.")]),
+        ex("fb_curl","Hammer Curl",2,12,15,15,2.5,0,"Neutral grip. Brachialis emphasis. Follow immediately with tricep ext as a superset.",[alt("fb_curl_a1","DB Bicep Curl",15,2.5,0,"Supinate as you curl. Full range.")]),
+        ex("fb_tri","DB Tricep Overhead Ext",2,12,15,12.5,2.5,0,"Superset with curls. Long head stretched overhead. Keep elbows tight.",[alt("fb_tri_a1","Diamond Push-Up",0,0,0,"Hands close. Elbows stay tight to body.")]),
+      ]},
+    ]
+  },
+
+  // ── PPL 6-day ──────────────────────────────────────────────
+  { id:"ppl6", name:"PPL 6-day (Advanced)", short:"PPL · 6 days/week", daysPerWeek:6,
+    desc:"Advanced PPL. Each muscle group trained twice per week — heavy compounds one day, volume/isolation the next. Requires solid sleep and nutrition.",
+    schedule:["A1","B1","C1","A2","B2","C2","rest"],
+    days:[
+      {id:"A1",name:"Push Day 1",subtitle:"Heavy Chest & Shoulders",
+       note:"Heavy compound focus today. Progressive overload on bench and overhead press is the priority. Everything else is accessory.",
+       exercises:[
+        ex("p6_bp1","DB Bench Press",4,6,10,35,2.5,0.5,"Heavier today. 2-second eccentric. Control the weight.",[alt("p6_bp1_a1","Floor Press",30,2.5,0.5,"Heavy floor press. Upper arms rest on ground at bottom.")]),
+        ex("p6_ip1","Incline DB Press",3,8,12,27.5,2.5,0.5,"30° incline. Upper chest emphasis. Elbows don't flare past 45°.",[alt("p6_ip1_a1","Landmine Press",20,2.5,0.5,"Natural arc. Shoulder-friendly pressing option.")]),
+        ex("p6_op1","DB Overhead Press",4,6,10,22.5,2.5,0.5,"Heavy overhead. Seated. Full lockout at top.",[alt("p6_op1_a1","Arnold Press",20,2.5,0.5,"Slightly lighter. Hits all three delt heads.")]),
+        ex("p6_lf1","DB Lateral Raise",4,12,20,10,2.5,0,"High volume for side delts. Lead with elbows.",[alt("p6_lf1_a1","Leaning Lateral Raise",8,2.5,0,"Lean away from anchor. Pre-stretches the delt.")]),
+        ex("p6_te1","DB Skull Crusher",3,10,15,15,2.5,0,"Lower DBs toward forehead, extend back up. Better for heavy tricep work.",[alt("p6_te1_a1","Diamond Push-Up",0,0,0,"Hands close. Elbows tight to body. Pure tricep.")]),
+      ]},
+      {id:"B1",name:"Pull Day 1",subtitle:"Heavy Back & Biceps",
+       note:"Heavy rows are your back's bench press. Every lb you add shows up as back thickness. Pause at the top.",
+       exercises:[
+        ex("p6_dr1","DB Row (each arm)",4,6,10,40,2.5,0.5,"Heavier today. Pause 2 seconds at top. Drive elbow to hip.",[alt("p6_dr1_a1","Meadows Row",30,2.5,0.5,"DB outside foot. Longer range of motion at the bottom.")]),
+        ex("p6_pc1","DB Pullover",3,8,12,30,2.5,0.5,"Lat stretch. Elbows slightly bent. Feel the lat at the bottom.",[alt("p6_pc1_a1","DB Seal Row",27.5,2.5,0.5,"Face-down on elevated bench. Pure lat/mid-back.")]),
+        ex("p6_rd1","Bent-Over Rear Delt Fly",3,12,15,12.5,2.5,0,"Hinge forward. Lead with elbows wide. Very light — rear delts are small.",[alt("p6_rd1_a1","Face Pull (band)",0,0,0,"Anchor at face height. Elbows high and flared.")]),
+        ex("p6_bc1","DB Bicep Curl",4,8,12,20,2.5,0,"Heavier curls. Supinate fully at the top. No swinging.",[alt("p6_bc1_a1","Zottman Curl",17.5,2.5,0,"Curl supinated, lower pronated. Trains biceps and forearms.")]),
+        ex("p6_hc1","Hammer Curl",3,10,15,20,2.5,0,"Neutral grip. Brachialis emphasis. Superset with curls for a brutal finish.",[alt("p6_hc1_a1","Cross-Body Hammer Curl",17.5,2.5,0,"Curl across your body. Hits brachioradialis from a different angle.")]),
+      ]},
+      {id:"C1",name:"Leg Day 1",subtitle:"Heavy Quads & Hamstrings",
+       note:"Squat first, hinge second. These two movements are the foundation. Everything else is finishing work.",
+       exercises:[
+        ex("p6_gs1","Goblet Squat",4,6,10,45,2.5,0.5,"Heavier today. Full depth. 3-second eccentric. Drive knees out.",[alt("p6_gs1_a1","DB Sumo Squat",40,2.5,0.5,"Wide stance, toes out. More inner quad and adductor.")]),
+        ex("p6_rl1","Romanian Deadlift",4,6,10,40,2.5,0.5,"Heavy hip hinge. Push hips back into a deep hamstring stretch.",[alt("p6_rl1_a1","DB Good Morning",25,2.5,0.5,"DBs on shoulders. Hinge at hips. Great hamstring and lower back builder.")]),
+        ex("p6_ls1","Bulgarian Split Squat",3,8,12,20,2.5,0,"Most effective unilateral leg exercise. Rear foot elevated. Very humbling.",[alt("p6_ls1_a1","DB Lunge",22.5,2.5,0,"Standard lunge if split squat is too challenging.")]),
+        ex("p6_hb1","DB Hip Thrust",3,12,15,45,2.5,0,"Heavy glute work. Squeeze hard. Hold 1 second at top.",[alt("p6_hb1_a1","Single-Leg Hip Thrust",30,2.5,0,"One leg extended. Doubles the per-side glute demand.")]),
+        ex("p6_cc1","Calf Raise (on step)",4,15,25,0,0,0,"Full ROM. Hold stretch at the bottom 1 second.",[alt("p6_cc1_a1","Single-Leg Calf Raise",0,0,0,"One foot. Much harder than two-leg version.")]),
+      ]},
+      {id:"A2",name:"Push Day 2",subtitle:"Volume Chest & Triceps",
+       note:"More volume today, slightly lighter. Focus on feel and contraction. Pump work drives real muscle signals.",
+       exercises:[
+        ex("p6_bp2","DB Chest Fly",3,12,15,17.5,2.5,0,"Wide arc down, squeeze up. This is not a strength exercise — feel the pecs.",[alt("p6_bp2_a1","DB Squeeze Press",25,2.5,0.5,"Press DBs together throughout. Constant chest tension.")]),
+        ex("p6_ip2","Incline DB Fly",3,12,15,15,2.5,0,"Upper chest stretch focus. Wide arc. Don't go heavy — pure isolation.",[alt("p6_ip2_a1","Incline Push-Up",0,0,0,"Feet elevated on bench. Volume-focused upper chest.")]),
+        ex("p6_lf2","DB Lateral Raise",4,15,20,10,2.5,0,"Side delt volume day. High reps, strict form. Drop set on last set.",[alt("p6_lf2_a1","DB Upright Row",15,2.5,0,"Pull elbows up and out. Hits side delts and traps.")]),
+        ex("p6_te2","DB Tricep Overhead Ext",4,12,15,15,2.5,0,"Long head stretch at the bottom. Volume focus — squeeze at full extension.",[alt("p6_te2_a1","DB Tricep Kickback",12.5,2.5,0,"Hinge forward, upper arm parallel to floor. Peak contraction.")]),
+        ex("p6_rd2","Bent-Over Rear Delt Fly",3,15,20,8,2.5,0,"High reps. Lead with elbows. Rear delts are often underdeveloped.",[alt("p6_rd2_a1","Prone Y-Raise",5,2.5,0,"Face-down on incline. Raise arms in Y shape. Great for posture.")]),
+      ]},
+      {id:"B2",name:"Pull Day 2",subtitle:"Volume Back & Biceps",
+       note:"Volume day — more sets, more angles. Focus on mind-muscle connection. Stretch the muscle under load.",
+       exercises:[
+        ex("p6_dr2","Chest-Supported Row",4,12,15,25,2.5,0,"Volume back work. Full stretch at bottom — let the weight pull your shoulder down.",[alt("p6_dr2_a1","DB Seal Row",22.5,2.5,0.5,"Face-down on elevated bench. Both arms. Pure lat focus.")]),
+        ex("p6_pc2","DB Pullover",3,12,15,25,2.5,0,"Lat stretch focus. Feel the muscle lengthening. Squeeze at end of pull.",[alt("p6_pc2_a1","Resistance Band Row",0,0,0,"Anchor at waist height. Good volume finisher.")]),
+        ex("p6_facepull","Face Pull (band)",4,15,20,0,0,0,"Anchor at face height. Pull to face, elbows high and flared. Essential shoulder health work.",[alt("p6_facepull_a1","Prone Y-Raise",5,2.5,0,"Face-down on incline. Very light. Great for posture.")]),
+        ex("p6_bc2","Incline DB Curl",3,12,15,12.5,2.5,0,"Arms hang behind body on incline. Max stretch at the bottom. Nippard's favorite bicep exercise.",[alt("p6_bc2_a1","Concentration Curl",15,2.5,0,"Elbow on inner thigh. Eliminates cheating. Pure mind-muscle.")]),
+        ex("p6_hc2","Zottman Curl",3,12,15,15,2.5,0,"Curl supinated, rotate at top, lower pronated. Works biceps and forearms together.",[alt("p6_hc2_a1","DB Reverse Curl",12.5,2.5,0,"Palms down throughout. Forearm and brachioradialis builder.")]),
+      ]},
+      {id:"C2",name:"Leg Day 2",subtitle:"Volume Glutes & Hamstrings",
+       note:"More glute and hamstring volume — these muscles are often undertrained. High reps. Feel the burn.",
+       exercises:[
+        ex("p6_ls2","DB Lunge (each leg)",4,10,15,20,2.5,0,"Volume lunges. Walking lunges if you have space. Front knee tracks toes.",[alt("p6_ls2_a1","Reverse Lunge",22.5,2.5,0,"Step backward. More glute activation than forward lunge.")]),
+        ex("p6_hb2","DB Hip Thrust",4,12,20,40,2.5,0,"High rep glute work. Squeeze at the top and hold 1 second. This is where glutes grow.",[alt("p6_hb2_a1","Single-Leg Hip Thrust",25,2.5,0,"One leg. More targeted. Great for fixing imbalances.")]),
+        ex("p6_gs2","Goblet Squat",3,15,20,30,2.5,0.5,"Lighter, higher rep today. Focus on quad burn. Pause 1 second at the bottom.",[alt("p6_gs2_a1","DB Step-Up",20,2.5,0,"Step onto bench. Drive through heel. Single-leg quad work.")]),
+        ex("p6_rl2","Romanian Deadlift",3,12,15,30,2.5,0.5,"Lighter hamstring volume. Slow and controlled. Feel the stretch — don't rush it.",[alt("p6_rl2_a1","Single-Leg RDL",15,2.5,0.5,"One leg. Balance challenge plus great hamstring stretch.")]),
+        ex("p6_cc2","Calf Raise (on step)",4,20,30,0,0,0,"Very high rep calf work. Full ROM. Calves are slow-twitch — they need volume.",[alt("p6_cc2_a1","Seated Calf Raise",25,2.5,0,"Seated with DB on knees. Targets the soleus.")]),
+      ]},
+    ]
+  },
+
+];
+
+function getPlan(id){ return PLANS.find(p=>p.id===id)||PLANS[0]; }
+function getWeight(sw, inc, wk, exBests, exId) {
+ const programWeight = sw + inc * Math.floor(wk/2);
+ const bestWeight = exBests?.[exId]?.weight ?? 0;
+ // Use whichever is higher: program progression or best logged performance
+ return Math.max(programWeight, bestWeight);
+}
+function getWarmup(w){ return w>15?Math.round((w*0.5)/2.5)*2.5:0; }
+
+const TIPS = [
+ {icon:"🌅",who:"Huberman",title:"Morning Sunlight",body:"Get 10–15 min of sunlight within 60 min of waking — no sunglasses. Sets your circadian rhythm, boosts morning cortisol, and improves sleep quality that night."},
+ {icon:"😴",who:"Huberman",title:"Sleep is the Protocol",body:"7–9 hrs non-negotiable. Growth hormone is released during deep sleep. Poor sleep increases ghrelin (hunger hormone) by ~25% — you will overeat if you sleep badly."},
+ {icon:"🍽️",who:"Huberman",title:"Delay First Meal",body:"Push your first meal 1–2 hrs after waking. Extends your overnight fast, improves insulin sensitivity, and aids fat oxidation. Coffee is fine."},
+ {icon:"🧊",who:"Huberman",title:"Cold Exposure",body:"2–3 min cold shower 3x/week can increase dopamine by ~250% and norepinephrine by ~300%. Take it after your workout, not before — cold before training blunts muscle protein synthesis."},
+ {icon:"📱",who:"Huberman",title:"No Phone in Bed",body:"Blue light + dopamine hits from scrolling delay melatonin release by 2–3 hrs. Dim lights 1 hr before bed. Your fat loss and muscle gain both happen during sleep."},
+ {icon:"🏋️",who:"Nippard",title:"Progressive Overload",body:"The only reason your body adds muscle is if it's forced to adapt to increasing demands. Add reps or weight every session where possible. Log everything."},
+ {icon:"🍗",who:"Nippard",title:"Protein Math",body:"Target 1g protein per lb of your goal bodyweight per day. Spread across 3–4 meals. This is the single most important dietary variable for preserving muscle while losing fat."},
+ {icon:"📉",who:"Nippard",title:"Calorie Cycling",body:"Eat more on training days (~maintenance), less on rest days (~bigger deficit). The weekly average still hits your deficit, but muscles get more fuel when they need it."},
+ {icon:"⚖️",who:"Nippard",title:"Weigh In Smart",body:"Weigh every morning after bathroom, before eating. Take the weekly average — daily swings of 2–5 lbs are normal. The trend over weeks is what matters, not today's number."},
+ {icon:"🚶",who:"Both",title:"NEAT is Huge",body:"Non-exercise activity thermogenesis — just moving around — can burn 350–500 extra calories/day at your weight. 8,000 steps/day is roughly skipping 3–4 meals per week in extra burn."},
+];
+
+// ── APP ──────────────────────────────────────────────────────
+function App() {
+ const [screen, setScreen] = React.useState("home");
+ const [activeTab, setActiveTab] = React.useState("training");
+ const [draftResumeChecked, setDraftResumeChecked] = React.useState(false);
+
+ // Persisted state
+ const [weekNum, setWeekNum, wkLoaded] = usePersist("lg_week", 0);
+ const [logs, setLogs, logsLoaded] = usePersist("lg_logs", {});
+ const [stepLogs, setStepLogs, stLoaded] = usePersist("lg_steps", {});
+ const [curWeight, setCurWeight, cwLoaded] = usePersist("lg_curweight", null);
+ const [wkTime, setWkTime, wtLoaded] = usePersist("lg_wktime", "morning");
+ const [exAlts, setExAlts] = usePersist("lg_exalts", {});
+ const [activePlanId, setActivePlanId, planLoaded] = usePersist("lg_plan", "ppl3");
+ const [userProfile, setUserProfile, profLoaded] = usePersist("lg_profile", null);
+ const [exBests, setExBests] = usePersist("lg_exbests", {});
+
+ const loaded = wkLoaded && logsLoaded && stLoaded && cwLoaded && wtLoaded && profLoaded && planLoaded;
+
+ // Auto-resume draft workout if phone locked mid-session
+ React.useEffect(() => {
+   if (loaded && !draftResumeChecked) {
+     setDraftResumeChecked(true);
+     const planHasDay = activePlan.days.some(d => d.id === activeWorkout);
+     const hasDraftData = Object.keys(setData).length > 0 || Object.keys(logInput).length > 0;
+     if (activeWorkout && planHasDay && hasDraftData) {
+       setScreen("workout");
+     } else if (activeWorkout && !planHasDay) {
+       // Stale draft from a different plan — clear it
+       setActiveWorkout(null); setCompletedSets({}); setSetData({}); setLogInput({});
+       setLogDate(null); setLogDay(null);
+     }
+   }
+ }, [loaded]);
+ const setupDone = userProfile !== null;
+
+ // Safety: if on workout screen but no valid dayObj, go home
+ React.useEffect(() => {
+   if (screen === "workout" && loaded && setupDone) {
+     const valid = activePlan.days.some(d => d.id === activeWorkout);
+     if (!valid) { setScreen("home"); }
+   }
+ }, [screen, activeWorkout, activePlanId]);
+
+ // Active plan + helpers
+ const activePlan = getPlan(activePlanId);
+ const allExes = activePlan.days.flatMap(d=>d.exercises);
+
+ // stepLogs: { "date": {regular:N, ruck:N, ruckMiles:N|null} } or legacy number
+ function getStepEntry(dt){ const v=stepLogs[dt]; if(!v) return {regular:0,ruck:0,ruckMiles:null}; if(typeof v==="number") return {regular:v,ruck:0,ruckMiles:null}; return {regular:v.regular||0,ruck:v.ruck||0,ruckMiles:v.ruckMiles||null}; }
+ function getTotalSteps(dt){ const e=getStepEntry(dt); return e.regular+e.ruck; }
+
+ // Derived from profile
+ const userStartWeight = userProfile?.startWeight ?? 200;
+ const userGoalWeight = userProfile?.goalWeight ?? 160;
+ const userHeightCm = userProfile?.heightCm ?? 170;
+ const userAge = userProfile?.age ?? 30;
+ const userWeightLbs = curWeight ?? userStartWeight;
+
+ // Session state — workout draft persisted so phone lock can't kill it
+ const [activeWorkout, setActiveWorkout, awLoaded] = usePersist("lg_draft_workout", null);
+ const [completedSets, setCompletedSets, csLoaded] = usePersist("lg_draft_completed", {});
+ const [setData, setSetData, sdLoaded] = usePersist("lg_draft_sets", {});
+ const [logInput, setLogInput, liLoaded] = usePersist("lg_draft_input", {});
+ const [logDate, setLogDate, ldLoaded] = usePersist("lg_draft_date", null);
+ const [logDay, setLogDay, lDayLoaded] = usePersist("lg_draft_day", null);
+ const [expandedSet, setExpandedSet] = React.useState(null);
+ const [expandedEx, setExpandedEx] = React.useState(null);
+ const [showAltPicker, setShowAltPicker] = React.useState(null);
+ const [showLogEditor, setShowLogEditor] = React.useState(false);
+ const [calOffset, setCalOffset] = React.useState(0);
+ const [rInp, setRInp] = React.useState("");
+ const [rkInp, setRkInp] = React.useState("");
+ const [miInp, setMiInp] = React.useState("");
+ const [showCardio, setShowCardio] = React.useState(false);
+ const [expandedTip, setExpandedTip] = React.useState(null);
+ const [expandedMeal, setExpandedMeal] = React.useState(null);
+ const [weightInput, setWeightInput] = React.useState("");
+ const [saveStatus, setSaveStatus] = React.useState("");
+ const [showBackup, setShowBackup] = React.useState(false);
+ const [importText, setImportText] = React.useState("");
+ const [importStatus, setImportStatus] = React.useState("");
+ const [viewingLog, setViewingLog] = React.useState(null);
+ const [showPlanPicker, setShowPlanPicker] = React.useState(false);
+
+ const today = new Date().toISOString().split("T")[0];
+ const dayObj = activePlan.days.find(d=>d.id===activeWorkout);
+ const stepsToday = getTotalSteps(today);
+ const stepEntryToday = getStepEntry(today);
+ const lostSoFar = userStartWeight - userWeightLbs;
+ const remaining = userWeightLbs - userGoalWeight;
+ const tdee = calcTDEE(userWeightLbs,userHeightCm,userAge,userProfile?.sex);
+ const proteinTarget = userGoalWeight;
+ const trainCals = calcTrainingDayCals(userWeightLbs,userHeightCm,userAge,userProfile?.sex);
+ const restCals = calcRestDayCals(userWeightLbs,userHeightCm,userAge,userProfile?.sex);
+ const avgDailyCals = Math.round((trainCals*3+restCals*4)/7);
+ const weightMilestones = calcMilestones(userStartWeight, userGoalWeight);
+ const nextMilestone = weightMilestones.find(m=>m<userWeightLbs)||userGoalWeight;
+ const lbsToMilestone = userWeightLbs - nextMilestone;
+
+ const last7 = Array.from({length:7},(_,i)=>{
+ const d=new Date(); d.setDate(d.getDate()-(6-i));
+ const k=d.toISOString().split("T")[0];
+ const se=getStepEntry(k);
+ return {date:k,steps:getTotalSteps(k),regular:se.regular,ruck:se.ruck,ruckMiles:se.ruckMiles,label:["Su","Mo","Tu","We","Th","Fr","Sa"][d.getDay()]};
+ });
+ const activeDays = last7.filter(d=>d.steps>0);
+ const avgSteps = activeDays.length?Math.round(activeDays.reduce((a,b)=>a+b.steps,0)/activeDays.length):0;
+
+ function getActiveEx(ex){
+ const altId=exAlts[ex.id];
+ if(!altId||altId==="default") return ex;
+ const alt=(ex.alternatives||[]).find(a=>a.id===altId);
+ return alt?{...ex,name:alt.name,startWeight:alt.startWeight,increment:alt.increment,warmupPct:alt.warmupPct,cue:alt.cue,isAlt:true}:ex;
+ }
+
+ function startWorkout(id){
+ setActiveWorkout(id); setCompletedSets({}); setSetData({}); setLogInput({});
+ setExpandedSet(null); setExpandedEx(null); setShowAltPicker(null);
+ setLogDate(today); setLogDay(id); setShowLogEditor(false); setScreen("workout");
+ }
+
+ function openSetLog(exId,i,defW){
+ const k=`${exId}_${i}`;
+ if(completedSets[k]){setCompletedSets(p=>({...p,[k]:false}));setExpandedSet(null);return;}
+ setExpandedSet(expandedSet===k?null:k);
+ if(!logInput[k]) setLogInput(p=>({...p,[k]:{weight:String(defW||""),reps:""}}));
+ }
+
+ function confirmSet(exId,i){
+ const k=`${exId}_${i}`;
+ const inp=logInput[k]||{};
+ const w=parseFloat(inp.weight),r=parseInt(inp.reps);
+ setSetData(p=>({...p,[k]:{weight:!isNaN(w)?w:null,reps:!isNaN(r)?r:null}}));
+ setCompletedSets(p=>({...p,[k]:true}));
+ setExpandedSet(null);
+ }
+
+ function skipLog(exId,i){ const k=`${exId}_${i}`; setCompletedSets(p=>({...p,[k]:true})); setExpandedSet(null); }
+
+ // Save current setData to logs; optionally navigate to done screen
+ async function saveWorkoutNow(goToDone) {
+ const saveDate=logDate||today, saveDay=logDay||activeWorkout;
+ const nl={...logs,[saveDate]:{day:saveDay,week:weekNum,sets:setData,loggedAt:today}};
+ await setLogs(nl);
+ // setData is flat: {"bp_0":{weight,reps}, "bp_1":{weight,reps}, ...}
+ const newBests = {...exBests};
+ Object.entries(setData).forEach(([key, s]) => {
+ if (!s) return;
+ const parts = key.split("_");
+ // exId is everything except the last segment (set index)
+ const exId = parts.slice(0, parts.length-1).join("_");
+ const w = parseFloat(s.weight)||0;
+ const r = parseInt(s.reps)||0;
+ if (w > 0 && r > 0) {
+ const prev = newBests[exId];
+ if (!prev || w > prev.weight || (w === prev.weight && r > prev.reps)) {
+ newBests[exId] = { weight: w, reps: r, date: today };
+ }
+ }
+ });
+ await setExBests(newBests);
+ setSaveStatus("Saved ✓"); setTimeout(()=>setSaveStatus(""),2000);
+    setSaveStatus("Saved ✓"); setTimeout(()=>setSaveStatus(""),2000);
+    if (goToDone) {
+      setActiveWorkout(null); setCompletedSets({}); setSetData({}); setLogInput({});
+      setLogDate(null); setLogDay(null);
+      setScreen("done");
+    }
+
+ async function finishWorkout(){
+ await saveWorkoutNow(true);
+ }
+
+ async function logSteps(e){
+ const val = e?.target?.value !== undefined ? e.target.value : todaySteps;
+ const n=parseInt(val);
+ if(!isNaN(n)&&n>=0){ await setStepLogs({...stepLogs,[today]:n}); }
+ }
+
+ async function updateWeight(e){
+ const val = e?.target?.value !== undefined ? e.target.value : weightInput;
+ const n=parseFloat(val);
+ if(!isNaN(n)&&n>50&&n<600){ await setCurWeight(n); }
+ }
+
+ function exportData() {
+ const payload = {
+ exportedAt: new Date().toISOString(),
+ version: 1,
+ data: { lg_week: weekNum, lg_logs: logs, lg_steps: stepLogs, lg_plan: activePlanId,
+ lg_curweight: curWeight, lg_wktime: wkTime, lg_exalts: exAlts }
+ };
+ const json = JSON.stringify(payload, null, 2);
+ const blob = new Blob([json], {type: "application/json"});
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement("a");
+ a.href = url; a.download = `lazy-gains-backup-${new Date().toISOString().split("T")[0]}.json`;
+ a.click(); URL.revokeObjectURL(url);
+ }
+
+ async function importData() {
+ try {
+ const parsed = JSON.parse(importText);
+ const d = parsed.data || parsed;
+ if (d.lg_week !== undefined) await setWeekNum(d.lg_week);
+        if (d.lg_plan) await setActivePlanId(d.lg_plan);
+ if (d.lg_logs) await setLogs(d.lg_logs);
+ if (d.lg_steps !== undefined) await setStepLogs(d.lg_steps);
+ if (d.lg_curweight) await setCurWeight(d.lg_curweight);
+ if (d.lg_wktime) await setWkTime(d.lg_wktime);
+ if (d.lg_exalts) await setExAlts(d.lg_exalts);
+ setImportStatus("✅ Restored successfully!");
+ setImportText("");
+ setTimeout(() => { setImportStatus(""); setShowBackup(false); }, 2500);
+ } catch(e) {
+ setImportStatus("❌ Invalid backup file. Paste the full JSON.");
+ }
+ }
+
+ const schedule = MEAL_SCHEDULES[wkTime];
+
+ const S = {
+ page:{minHeight:"100vh",background:"#0a0a0a",color:"#f0ede8",fontFamily:"Georgia,serif",maxWidth:430,margin:"0 auto",paddingBottom:screen==="home"?80:0,overflowY:"auto",WebkitOverflowScrolling:"touch"},
+ };
+
+ // Loading screen
+ if(!loaded) return (
+ <div style={{...S.page,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+ <div style={{fontSize:40}}></div>
+ <div style={{fontSize:14,color:"#8a7c6e"}}>Loading...</div>
+ </div>
+ );
+
+ // First-run setup
+ if(!setupDone) return <SetupScreen onComplete={(profile) => {
+ setUserProfile(profile);
+ setCurWeight(profile.startWeight);
+ if(profile.wkTime) setWkTime(profile.wkTime);
+ }}/>;
+
+ return (
+ <div style={S.page}>
+ <style>{`*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}button{cursor:pointer;border:none;font-family:inherit}input{-webkit-appearance:none}.si{animation:si 0.2s ease}@keyframes si{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}.cb{transition:all 0.15s}.cb:active{transform:scale(0.93)}input:focus{outline:1px solid #ff6a00!important}::-webkit-scrollbar{display:none}`}</style>
+
+ {/* ══ WORKOUT SCREEN ══════════════════════════════════════ */}
+ {screen==="workout"&&dayObj&&activePlan.days.some(d=>d.id===activeWorkout)&&(
+ <div className="si">
+ <div style={{padding:"24px 24px 14px",background:"#111",borderBottom:"1px solid #222"}}>
+ <button onClick={()=>setScreen("home")} style={{background:"none",color:"#8a7c6e",fontSize:14,marginBottom:10,padding:0}}>← Back</button>
+ <div style={{fontSize:10,letterSpacing:3,color:"#8a7c6e",textTransform:"uppercase"}}>Week {weekNum+1} · {dayObj.subtitle||""}</div>
+ <div style={{fontSize:26,fontWeight:700,marginTop:4}}>{dayObj.name}</div>
+ <div style={{marginTop:10,background:"#1a0d00",borderRadius:10,padding:"10px 14px",border:"1px solid #2a1200"}}>
+ <div style={{fontSize:9,letterSpacing:2,color:"#c06820",textTransform:"uppercase",marginBottom:4}}>Nippard Says</div>
+ <div style={{fontSize:12,color:"#e08840",lineHeight:1.6}}>{dayObj.note||dayObj.nippardNote}</div>
+ </div>
+ </div>
+ <div style={{padding:"16px 24px"}}>
+ {dayObj.exercises.map(ex=>{
+ const activeEx=getActiveEx(ex);
+ const ww=getWeight(activeEx.startWeight,activeEx.increment,weekNum,exBests,activeEx.id);
+ const wu=activeEx.warmupPct>0?getWarmup(ww):0;
+ const done=Array.from({length:ex.sets},(_,i)=>completedSets[`${ex.id}_${i}`]).every(Boolean);
+ const open=expandedEx===ex.id;
+ const pickerOpen=showAltPicker===ex.id;
+ const isAlt=!!(exAlts[ex.id]&&exAlts[ex.id]!=="default");
+ return (
+ <div key={ex.id} style={{background:done?"#0d1a0d":"#111",border:`1px solid ${done?"#2a4a2a":"#222"}`,borderRadius:16,padding:18,marginBottom:14,transition:"all 0.3s"}}>
+ <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+ <div style={{flex:1}}>
+ <div style={{fontWeight:700,fontSize:15}}>{activeEx.name}</div>
+ <div style={{fontSize:11,color:"#8a7c6e",marginTop:2}}>{ex.sets} sets × {ex.repsLow}–{ex.repsHigh} reps</div>
+ </div>
+ <div style={{display:"flex",gap:6,alignItems:"center"}}>
+ {done&&<span style={{color:"#4a8a4a",fontSize:18}}>✓</span>}
+ <button onClick={()=>setExpandedEx(open?null:ex.id)} style={{background:"#1a1a1a",color:"#8a7c6e",fontSize:10,padding:"4px 8px",borderRadius:20,border:"1px solid #2a2a2a"}}>{open?"▲":"cue"}</button>
+ </div>
+ </div>
+ <div style={{marginBottom:10}}>
+ <button onClick={()=>setShowAltPicker(pickerOpen?null:ex.id)}
+ style={{background:isAlt?"#1a0d00":"#141414",border:`1px solid ${isAlt?"#ff6a00":"#2a2a2a"}`,borderRadius:8,padding:"5px 10px",fontSize:10,color:isAlt?"#ff6a00":"#555",display:"flex",alignItems:"center",gap:6}}>
+ <span>🔄</span><span>{isAlt?`Alt: ${activeEx.name}`:"Switch exercise"}</span><span style={{color:"#444"}}>{pickerOpen?"▲":"▼"}</span>
+ </button>
+ </div>
+ {pickerOpen&&(
+ <div style={{background:"#0a0a0a",borderRadius:12,padding:12,marginBottom:12,border:"1px solid #2a2a2a"}}>
+ <div style={{fontSize:9,color:"#8a7c6e",letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Choose exercise</div>
+ <div onClick={()=>{setExAlts(p=>({...p,[ex.id]:"default"}));setShowAltPicker(null);}}
+ style={{background:!isAlt?"#1a0900":"#111",border:`1px solid ${!isAlt?"#ff6a00":"#222"}`,borderRadius:10,padding:"10px 12px",marginBottom:6,cursor:"pointer"}}>
+ <div style={{fontSize:13,fontWeight:700,color:!isAlt?"#ff6a00":"#f0ede8"}}>{ex.name} {!isAlt?"✓":""}</div>
+ <div style={{fontSize:10,color:"#555",marginTop:2}}>Default · Start {ex.startWeight>0?`${ex.startWeight} lb`:"BW"}</div>
+ </div>
+ {(ex.alternatives||[]).map(alt=>{
+ const aWW=getWeight(alt.startWeight,alt.increment,weekNum,exBests,alt.id);
+ const aWU=alt.warmupPct>0?getWarmup(aWW):0;
+ const sel=exAlts[ex.id]===alt.id;
+ return (
+ <div key={alt.id} onClick={()=>{setExAlts(p=>({...p,[ex.id]:alt.id}));setShowAltPicker(null);}}
+ style={{background:sel?"#1a0900":"#111",border:`1px solid ${sel?"#ff6a00":"#222"}`,borderRadius:10,padding:"10px 12px",marginBottom:6,cursor:"pointer"}}>
+ <div style={{fontSize:13,fontWeight:700,color:sel?"#ff6a00":"#f0ede8"}}>{alt.name} {sel?"✓":""}</div>
+ <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
+ <span style={{fontSize:10,color:"#ff6a00",background:"#1a0900",padding:"2px 7px",borderRadius:20}}>{aWW>0?`Work: ${aWW} lb`:"Bodyweight"}</span>
+ {aWU>0&&<span style={{fontSize:10,color:"#8a7c6e",background:"#1a1a1a",padding:"2px 7px",borderRadius:20}}>Warmup: {aWU} lb</span>}
+ </div>
+ <div style={{fontSize:11,color:"#8a7c6e",marginTop:5,lineHeight:1.5}}>{alt.cue}</div>
+ </div>
+ );
+ })}
+ </div>
+ )}
+ {open&&(
+ <div style={{background:"#141414",borderRadius:10,padding:"10px 12px",marginBottom:12,borderLeft:"2px solid #ff6a00"}}>
+ <div style={{fontSize:9,color:"#ff6a00",letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Form Cue</div>
+ <div style={{fontSize:12,color:"#c0b8af",lineHeight:1.7}}>{activeEx.cue}</div>
+ </div>
+ )}
+ <div style={{display:"flex",gap:8,marginBottom:14}}>
+ {wu>0&&<div style={{flex:1,background:"#1a1a1a",borderRadius:10,padding:"10px 0",textAlign:"center"}}>
+ <div style={{fontSize:9,color:"#8a7c6e",letterSpacing:1,textTransform:"uppercase"}}>Warm-up</div>
+ <div style={{fontSize:18,fontWeight:700,color:"#8a7c6e",marginTop:3}}>{wu} lb</div>
+ <div style={{fontSize:9,color:"#444",marginTop:2}}>1 × 12</div>
+ </div>}
+ <div style={{flex:1,background:"#1a0d00",borderRadius:10,padding:"10px 0",textAlign:"center"}}>
+ <div style={{fontSize:9,color:"#8a7c6e",letterSpacing:1,textTransform:"uppercase"}}>Work Sets</div>
+ <div style={{fontSize:18,fontWeight:700,color:"#ff6a00",marginTop:3}}>{ww>0?`${ww} lb`:"BW"}</div>
+ <div style={{fontSize:9,color:"#444",marginTop:2}}>per dumbbell</div>
+ </div>
+ </div>
+ <div style={{display:"flex",flexDirection:"column",gap:8}}>
+ {Array.from({length:ex.sets},(_,i)=>{
+ const k=`${ex.id}_${i}`,isDone=!!completedSets[k],isOpen=expandedSet===k,logged=setData[k];
+ const inp=logInput[k]||{weight:String(ww||""),reps:""};
+ return (
+ <div key={i}>
+ <button className="cb" onClick={()=>openSetLog(ex.id,i,ww)}
+ style={{width:"100%",height:44,borderRadius:10,background:isDone?"#1a3a00":"#1a1a1a",color:isDone?"#4aaa20":"#888",fontSize:13,fontWeight:700,border:`1px solid ${isDone?"#2a5a00":isOpen?"#ff6a00":"#2a2a2a"}`,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px"}}>
+ <span style={{color:isDone?"#4aaa20":"#ff6a00",fontSize:12}}>SET {i+1}</span>
+ {isDone&&logged&&(logged.weight||logged.reps)?
+ <span style={{fontSize:12,color:"#a0d060"}}>{logged.weight?`${logged.weight} lb`:""}{logged.weight&&logged.reps?" · ":""}{logged.reps?`${logged.reps} reps`:""}</span>
+ :isDone?<span style={{color:"#4aaa20",fontSize:16}}>✓</span>
+ :<span style={{color:"#555",fontSize:11}}>{isOpen?"▲ close":"tap to log ▼"}</span>}
+ </button>
+ {isOpen&&(
+ <div style={{background:"#0f0f0f",borderRadius:"0 0 10px 10px",padding:"12px 14px",border:"1px solid #ff6a00",borderTop:"none",marginTop:-2}}>
+ <div style={{display:"flex",gap:8,marginBottom:10}}>
+ <div style={{flex:1}}>
+ <div style={{fontSize:9,color:"#8a7c6e",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Weight (lbs)</div>
+ <input type="number" inputMode="decimal" placeholder={String(ww||"")} value={inp.weight}
+ onChange={e=>{const v=e.target.value;setLogInput(p=>({...p,[k]:{...inp,weight:v}}));const w=parseFloat(v),r=parseInt((logInput[k]||{}).reps);setSetData(p=>({...p,[k]:{weight:!isNaN(w)?w:(p[k]?.weight||null),reps:!isNaN(r)?r:(p[k]?.reps||null)}}));}}
+ onBlur={e=>{const updated={...inp,weight:e.target.value};setLogInput(p=>({...p,[k]:updated}));const w=parseFloat(e.target.value),r=parseInt(updated.reps);if(!isNaN(w)||!isNaN(r)){setSetData(p=>({...p,[k]:{weight:!isNaN(w)?w:null,reps:!isNaN(r)?r:null}}));setCompletedSets(p=>({...p,[k]:true}));setExpandedSet(null);}}}
+ style={{width:"100%",background:"#1a1a1a",border:"1px solid #333",borderRadius:8,padding:"10px 12px",color:"#f0ede8",fontSize:16,fontFamily:"inherit"}}/>
+ </div>
+ <div style={{flex:1}}>
+ <div style={{fontSize:9,color:"#8a7c6e",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Reps done</div>
+ <input type="number" inputMode="numeric" placeholder={`${ex.repsLow}–${ex.repsHigh}`} value={inp.reps}
+ onChange={e=>{const v=e.target.value;setLogInput(p=>({...p,[k]:{...inp,reps:v}}));const r=parseInt(v),w=parseFloat((logInput[k]||{}).weight);setSetData(p=>({...p,[k]:{weight:!isNaN(w)?w:(p[k]?.weight||null),reps:!isNaN(r)?r:(p[k]?.reps||null)}}));}}
+ onBlur={e=>{const updated={...inp,reps:e.target.value};setLogInput(p=>({...p,[k]:updated}));const w=parseFloat(updated.weight),r=parseInt(e.target.value);if(!isNaN(w)||!isNaN(r)){setSetData(p=>({...p,[k]:{weight:!isNaN(w)?w:null,reps:!isNaN(r)?r:null}}));setCompletedSets(p=>({...p,[k]:true}));setExpandedSet(null);}}}
+ style={{width:"100%",background:"#1a1a1a",border:"1px solid #333",borderRadius:8,padding:"10px 12px",color:"#f0ede8",fontSize:16,fontFamily:"inherit"}}/>
+ </div>
+ </div>
+ <div style={{display:"flex",gap:8}}>
+ <button onClick={()=>confirmSet(ex.id,i)} style={{flex:2,padding:"10px 0",borderRadius:8,background:"#ff6a00",color:"#0a0a0a",fontWeight:700,fontSize:13}}>✓ Log Set</button>
+ <button onClick={()=>skipLog(ex.id,i)} style={{flex:1,padding:"10px 0",borderRadius:8,background:"#1a1a1a",color:"#555",fontSize:12,border:"1px solid #2a2a2a"}}>Skip</button>
+ </div>
+ </div>
+ )}
+ </div>
+ );
+ })}
+ </div>
+ </div>
+ );
+ })}
+ <div style={{background:"#111",borderRadius:14,border:"1px solid #222",marginTop:14,overflow:"hidden"}}>
+ <div onClick={()=>setShowLogEditor(!showLogEditor)} style={{padding:"13px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+ <div>
+ <div style={{fontSize:12,fontWeight:700,color:"#f0ede8"}}>📅 Log as different day</div>
+ <div style={{fontSize:10,color:"#8a7c6e",marginTop:2}}>Saving as: <span style={{color:"#ff6a00"}}>{logDay||activeWorkout} · {logDate||today}</span></div>
+ </div>
+ <span style={{color:"#555",fontSize:13}}>{showLogEditor?"▲":"▼"}</span>
+ </div>
+ {showLogEditor&&(
+ <div style={{padding:"0 16px 16px",borderTop:"1px solid #1a1a1a"}}>
+ <div style={{marginTop:12,marginBottom:12}}>
+ <div style={{fontSize:10,color:"#8a7c6e",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Workout date</div>
+ <input type="date" value={logDate||today} onChange={e=>setLogDate(e.target.value)} style={{width:"100%",background:"#1a1a1a",border:"1px solid #333",borderRadius:8,padding:"10px 12px",color:"#f0ede8",fontSize:14,fontFamily:"inherit"}}/>
+ </div>
+ <div>
+ <div style={{fontSize:10,color:"#8a7c6e",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Workout type</div>
+ <div style={{display:"flex",gap:8}}>
+ {activePlan.days.map(d=>{const sel=(logDay||activeWorkout)===d.id;return(
+ <button key={d.id} onClick={()=>setLogDay(d.id)} style={{flex:1,padding:"10px 0",borderRadius:10,background:sel?"#ff6a00":"#1a1a1a",color:sel?"#0a0a0a":"#555",fontWeight:sel?700:400,fontSize:12,border:`1px solid ${sel?"#ff6a00":"#2a2a2a"}`}}>{d.emoji} {d.id}</button>
+ );})}
+ </div>
+ </div>
+ </div>
+ )}
+ </div>
+ <button onClick={()=>saveWorkoutNow(false)} style={{width:"100%",padding:14,borderRadius:16,background:"#1a1a1a",color:"#f0ede8",fontSize:14,fontWeight:600,border:"1px solid #333",marginTop:10,letterSpacing:0.5}}>
+ Save Progress {saveStatus&&<span style={{fontSize:11,color:"#ff6a00"}}>· {saveStatus}</span>}
+ </button>
+ <button onClick={finishWorkout} style={{width:"100%",padding:18,borderRadius:16,background:"#ff6a00",color:"#0a0a0a",fontSize:17,fontWeight:700,letterSpacing:1,marginTop:8}}>
+ FINISH WORKOUT
+ </button>
+ </div>
+ </div>
+ )}
+
+ {/* ══ DONE SCREEN ═════════════════════════════════════════ */}
+ {screen==="done"&&(
+ <div className="si" style={{padding:32,textAlign:"center"}}>
+ <div style={{fontSize:64,marginBottom:16}}></div>
+ <div style={{fontSize:26,fontWeight:700,marginBottom:8}}>Workout complete.</div>
+ <div style={{fontSize:14,color:"#8a7c6e",lineHeight:1.7,marginBottom:24}}>You showed up. That's 80% of it.<br/>Go hit your protein target and sleep 8 hrs.</div>
+ <div style={{background:"#0d1a0d",borderRadius:14,padding:14,border:"1px solid #1a3a1a",marginBottom:12,textAlign:"center"}}>
+ <div style={{fontSize:12,color:"#4a8a4a"}}>✓ Progress saved locally</div>
+ </div>
+ <div style={{background:"#111",borderRadius:16,padding:20,border:"1px solid #222",marginBottom:12,textAlign:"left"}}>
+ <div style={{fontSize:9,letterSpacing:3,color:"#ff6a00",textTransform:"uppercase",marginBottom:8}}>Nippard's Progression Rule</div>
+ <div style={{fontSize:13,color:"#c0b8af",lineHeight:1.8}}>Hit the top of your rep range on all sets, <strong style={{color:"#f0ede8"}}>2 workouts in a row?</strong> → Add 2.5 lbs. Bump the Week number on the home screen.</div>
+ </div>
+ <div style={{background:"#0d1a0d",borderRadius:16,padding:20,border:"1px solid #1a3a1a",marginBottom:24,textAlign:"left"}}>
+ <div style={{fontSize:9,letterSpacing:3,color:"#4a8a4a",textTransform:"uppercase",marginBottom:8}}>Huberman Post-Workout</div>
+ <div style={{fontSize:13,color:"#a0c0a0",lineHeight:1.8}}>Wait ~30 min before eating — let cortisol naturally clear. Then hit protein + carbs. Cold shower after is fine; just not before training.</div>
+ </div>
+ <button onClick={()=>{setScreen("home");setActiveWorkout(null);}} style={{width:"100%",padding:16,borderRadius:16,background:"#1a1a1a",color:"#f0ede8",fontSize:16,fontWeight:600,border:"1px solid #333"}}>← Back to Home</button>
+ </div>
+ )}
+
+ {/* ══ HOME SCREEN ═════════════════════════════════════════ */}
+ {screen==="home"&&(
+ <div className="si" style={{overflowY:"auto",WebkitOverflowScrolling:"touch",height:"100vh",paddingBottom:80}}>
+ <div style={{padding:"20px 24px 14px",background:"linear-gradient(180deg,#141414 0%,#0a0a0a 100%)"}}>
+ <div style={{fontSize:10,letterSpacing:4,color:"#8a7c6e",textTransform:"uppercase",marginBottom:6}}>Nippard × Huberman</div>
+ <div style={{fontSize:28,fontWeight:700,lineHeight:1.1,marginBottom:4}}>Lzy</div>
+ <div style={{fontSize:13,color:"#8a7c6e"}}>3 days/week · Week {weekNum+1}</div>
+ </div>
+ <div style={{display:"flex",background:"#0f0f0f",borderBottom:"1px solid #1e1e1e",overflowX:"auto"}}>
+ {[["training","🏋️","Train"],["nutrition","🍽️","Eat"],["steps","🚶","Steps"],["calendar","📅","Log"],["science","🧪","Science"]].map(([id,icon,label])=>(
+ <button key={id} onClick={()=>setActiveTab(id)} style={{flex:1,padding:"11px 6px",background:"none",color:activeTab===id?"#ff6a00":"#555",fontSize:11,fontWeight:activeTab===id?700:400,borderBottom:activeTab===id?"2px solid #ff6a00":"2px solid transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+ <span style={{fontSize:20}}>{icon}</span><span style={{fontSize:9,letterSpacing:1}}>{label}</span>
+ </button>
+ ))}
+ </div>
+
+ {/* ── TRAINING TAB ── */}
+ {activeTab==="training"&&(
+ <div style={{padding:"18px 24px 0"}}>
+   {/* ── PLAN PICKER MODAL ── */}
+   {showPlanPicker&&(
+     <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.9)",zIndex:100,overflowY:"auto",WebkitOverflowScrolling:"touch"}} onClick={()=>setShowPlanPicker(false)}>
+       <div style={{background:"#111",margin:"20px 16px 40px",borderRadius:20,border:"1px solid #222",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+         <div style={{padding:"20px 20px 16px",borderBottom:"1px solid #1a1a1a"}}>
+           <button onClick={()=>setShowPlanPicker(false)} style={{background:"none",color:"#8a7c6e",fontSize:13,marginBottom:8,padding:0}}>← Close</button>
+           <div style={{fontSize:18,fontWeight:700}}>Choose a Plan</div>
+           <div style={{fontSize:12,color:"#8a7c6e",marginTop:4}}>All plans are Jeff Nippard approved for evidence-based hypertrophy</div>
+         </div>
+         <div style={{padding:"16px 20px"}}>
+           {PLANS.map(plan=>{
+             const active=plan.id===activePlanId;
+             return(
+               <div key={plan.id} onClick={()=>{setActivePlanId(plan.id);setShowPlanPicker(false);setWeekNum(0);}}
+                 style={{background:active?"#1a0d00":"#0a0a0a",border:`1px solid ${active?"#ff6a00":"#1e1e1e"}`,borderRadius:14,padding:"16px",marginBottom:12,cursor:"pointer"}}>
+                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                   <div style={{fontSize:15,fontWeight:700,color:active?"#ff6a00":"#f0ede8"}}>{plan.name}</div>
+                   <div style={{fontSize:10,color:active?"#ff6a00":"#555",background:active?"#2a1500":"#1a1a1a",padding:"3px 8px",borderRadius:20,letterSpacing:1,whiteSpace:"nowrap",marginLeft:8}}>{plan.short.split("·")[1]?.trim()}</div>
+                 </div>
+                 <div style={{fontSize:12,color:"#8a7c6e",lineHeight:1.5,marginBottom:10}}>{plan.desc}</div>
+                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                   {plan.days.map(d=><span key={d.id} style={{fontSize:10,color:"#555",background:"#1a1a1a",padding:"2px 8px",borderRadius:20}}>{d.name}</span>)}
+                 </div>
+                 {active&&<div style={{marginTop:10,fontSize:11,color:"#ff6a00",fontWeight:600}}>✓ Active plan</div>}
+               </div>
+             );
+           })}
+         </div>
+       </div>
+     </div>
+   )}
+ <div style={{display:"flex",gap:10,marginBottom:16}}>
+ <div style={{flex:1,background:"#111",borderRadius:14,padding:"14px 16px",border:"1px solid #222"}}>
+ <div style={{fontSize:11,color:"#8a7c6e",marginBottom:8}}>Current Week</div>
+ <div style={{display:"flex",alignItems:"center",gap:12}}>
+ <button onClick={()=>setWeekNum(Math.max(0,weekNum-1))} style={{background:"#1a1a1a",color:"#f0ede8",width:30,height:30,borderRadius:8,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid #333"}}>−</button>
+ <span style={{fontSize:20,fontWeight:700,minWidth:24,textAlign:"center"}}>{weekNum+1}</span>
+ <button onClick={()=>setWeekNum(weekNum+1)} style={{background:"#ff6a00",color:"#0a0a0a",width:30,height:30,borderRadius:8,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+ </div>
+ </div>
+ <div style={{flex:1,background:"#111",borderRadius:14,padding:"14px 16px",border:"1px solid #222"}}>
+ <div style={{fontSize:11,color:"#8a7c6e",marginBottom:8}}>Update Weight</div>
+ <div style={{display:"flex",gap:6}}>
+ <input type="number" placeholder={`${curWeight}`} value={weightInput} onChange={e=>setWeightInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&updateWeight()} onBlur={updateWeight} style={{flex:1,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,padding:"6px 10px",color:"#f0ede8",fontSize:14,fontFamily:"inherit",width:0}}/>
+ <button onClick={updateWeight} style={{background:"#ff6a00",color:"#0a0a0a",padding:"6px 12px",borderRadius:8,fontWeight:700,fontSize:12}}>Set</button>
+ </div>
+ </div>
+ </div>
+ {lbsToMilestone<=5&&lbsToMilestone>0&&(
+ <div style={{background:"#1a0900",borderRadius:12,padding:"12px 14px",border:"1px solid #ff6a00",marginBottom:14}}>
+ <div style={{fontSize:12,color:"#ff6a00",fontWeight:700}}>⚡ Recalculate your calories</div>
+ <div style={{fontSize:11,color:"#c07040",marginTop:4}}>You're {lbsToMilestone} lb from {nextMilestone} lbs. Head to the Eat tab — your TDEE has dropped.</div>
+ </div>
+ )}
+ <button onClick={()=>setShowPlanPicker(true)} style={{width:"100%",background:"#111",border:"1px solid #222",borderRadius:12,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,cursor:"pointer"}}>
+   <div style={{textAlign:"left"}}>
+     <div style={{fontSize:9,color:"#8a7c6e",letterSpacing:2,textTransform:"uppercase",marginBottom:2}}>Active Plan</div>
+     <div style={{fontSize:13,fontWeight:600,color:"#ff6a00"}}>{activePlan.name}</div>
+   </div>
+   <div style={{fontSize:11,color:"#555"}}>{activePlan.short.split("·")[1]?.trim()} ›</div>
+ </button>
+ <div style={{fontSize:9,letterSpacing:3,color:"#8a7c6e",textTransform:"uppercase",marginBottom:10}}>Workouts</div>
+ {activePlan.days.map(d=>{
+ const rec=Object.entries(logs).filter(([,v])=>v.day===d.id).sort().slice(-1)[0];
+ return (
+ <div key={d.id} onClick={()=>startWorkout(d.id)} style={{background:"#111",borderRadius:16,padding:"16px 20px",marginBottom:10,border:"1px solid #222",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+ <div style={{display:"flex",alignItems:"center",gap:14}}>
+ <div style={{fontSize:13,fontWeight:700,color:"#ff6a00",minWidth:36,textAlign:"center"}}>{d.name.split(" ")[0]}</div>
+ <div>
+ <div style={{fontWeight:700,fontSize:15}}>{d.name}</div>
+ <div style={{fontSize:11,color:"#8a7c6e",marginTop:2}}>{d.subtitle}</div>
+ {rec&&<div style={{fontSize:10,color:"#ff6a00",marginTop:3}}>Last: {rec[0]}</div>}
+ </div>
+ </div>
+ <div style={{color:"#ff6a00",fontSize:20}}>›</div>
+ </div>
+ );
+ })}
+ <div style={{fontSize:9,letterSpacing:3,color:"#8a7c6e",textTransform:"uppercase",marginBottom:10,marginTop:8}}>Cardio · Saturday</div>
+ <div style={{background:"#111",borderRadius:16,padding:18,border:"1px solid #222",marginBottom:14}}>
+ <div onClick={()=>setShowCardio(!showCardio)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+ <div><div style={{fontWeight:700,fontSize:15}}>🚶 Pick Your Cardio</div><div style={{fontSize:11,color:"#4a8a4a",marginTop:2}}>Walks · Rucking · Bike · Jump Rope</div></div>
+ <div style={{color:"#ff6a00",fontSize:16}}>{showCardio?"∧":"›"}</div>
+ </div>
+ {showCardio&&(
+ <div>
+ {CARDIO.filter(c=>!c.tag).map(c=>(
+ <div key={c.id} style={{borderTop:"1px solid #1e1e1e",paddingTop:12,marginTop:12}}>
+ <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+ <div style={{fontWeight:600,fontSize:14}}>{c.name}</div>
+ <div style={{display:"flex",gap:6}}>
+ <span style={{background:"#1a1a1a",padding:"2px 8px",borderRadius:20,fontSize:10,color:"#ff6a00"}}>{c.duration}</span>
+ <span style={{background:"#1a1a1a",padding:"2px 8px",borderRadius:20,fontSize:10,color:"#4a8a4a"}}>{c.intensity}</span>
+ </div>
+ </div>
+ <div style={{fontSize:12,color:"#8a7c6e",marginTop:6,lineHeight:1.6}}>{c.tip}</div>
+ </div>
+ ))}
+ <div style={{borderTop:"1px solid #1e1e1e",paddingTop:14,marginTop:14}}>
+ <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+ <span style={{fontSize:15,fontWeight:700}}>🎒 Rucking</span>
+ <span style={{background:"#1a0900",color:"#ff6a00",fontSize:9,padding:"2px 8px",borderRadius:20,letterSpacing:1,fontWeight:700}}>PROGRESSIVE</span>
+ </div>
+ <div style={{fontSize:12,color:"#8a7c6e",lineHeight:1.6,marginBottom:12}}>Weighted backpack + walking. Burns ~2× more calories than walking, zero joint impact. Start with books or water bottles in a regular backpack.</div>
+ {CARDIO.filter(c=>c.tag==="RUCK").map(c=>(
+ <div key={c.id} style={{background:"#0a0a0a",borderRadius:12,padding:"12px 14px",marginBottom:10,border:"1px solid #1a1a1a"}}>
+ <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+ <div style={{fontWeight:700,fontSize:13}}>{c.name}</div>
+ <div style={{display:"flex",gap:6}}>
+ <span style={{background:"#1a0900",padding:"2px 8px",borderRadius:20,fontSize:10,color:"#ff6a00"}}>{c.duration}</span>
+ <span style={{background:"#0a1a0a",padding:"2px 8px",borderRadius:20,fontSize:10,color:"#4a8a4a"}}>{c.intensity}</span>
+ </div>
+ </div>
+ <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+ {[{label:"Weight",val:c.ruckDetail.weight},{label:"Distance",val:c.ruckDetail.distance},{label:"Burns",val:c.ruckDetail.calBurn}].map((d,i)=>(
+ <div key={i} style={{background:"#111",borderRadius:8,padding:"5px 10px",textAlign:"center"}}>
+ <div style={{fontSize:8,color:"#555",textTransform:"uppercase",letterSpacing:1}}>{d.label}</div>
+ <div style={{fontSize:12,fontWeight:700,color:"#f0ede8",marginTop:2}}>{d.val}</div>
+ </div>
+ ))}
+ </div>
+ <div style={{fontSize:11,color:"#8a7c6e",lineHeight:1.6,marginBottom:6}}>{c.tip}</div>
+ <div style={{fontSize:10,color:"#ff6a00",borderTop:"1px solid #1a1a1a",paddingTop:6,marginTop:4}}>{c.ruckDetail.progression}</div>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
+ </div>
+ <div style={{display:"flex",gap:4,marginBottom:24}}>
+ {["M","T","W","T","F","S","Su"].map((d,i)=>{const t=(activePlan.schedule||[])[i]||"rest";return(
+ <div key={i} style={{flex:1,background:t==="rest"?"#161616":t==="cardio"?"#0d1a0d":"#1a0d00",borderRadius:10,padding:"9px 0",textAlign:"center"}}>
+ <div style={{fontSize:9,color:"#444",marginBottom:3}}>{d}</div>
+ <div style={{fontSize:11,fontWeight:700,color:t==="rest"?"#333":t==="cardio"?"#4a8a4a":"#ff6a00"}}>{t==="rest"?"–":t==="🚶"?"🚶":t}</div>
+ </div>
+ );})}
+ </div>
+ </div>
+ )}
+
+ {/* ── NUTRITION TAB ── */}
+ {activeTab==="nutrition"&&(
+ <div style={{padding:"18px 24px"}}>
+ <div style={{background:"#1a0900",borderRadius:16,padding:18,border:"1px solid #2a1200",marginBottom:16}}>
+ <div style={{fontSize:9,letterSpacing:3,color:"#ff6a00",textTransform:"uppercase",marginBottom:12}}>Your Calories at {curWeight} lbs</div>
+ <div style={{display:"flex",gap:8,marginBottom:12}}>
+ {[{label:"Maintenance",val:tdee,color:"#f0ede8"},{label:"Train Days",val:trainCals,color:"#ff6a00"},{label:"Rest Days",val:restCals,color:"#5599cc"}].map((c,i)=>(
+ <div key={i} style={{flex:1,background:"#0a0a0a",borderRadius:12,padding:"12px 0",textAlign:"center"}}>
+ <div style={{fontSize:10,color:"#8a7c6e",marginBottom:4}}>{c.label}</div>
+ <div style={{fontSize:18,fontWeight:700,color:c.color}}>{c.val}</div>
+ <div style={{fontSize:9,color:"#555"}}>cal/day</div>
+ </div>
+ ))}
+ </div>
+ <div style={{background:"#0a0a0a",borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+ <span style={{fontSize:12,color:"#8a7c6e"}}>Weekly avg (~20% deficit)</span>
+ <span style={{fontSize:14,fontWeight:700,color:"#f0ede8"}}>{avgDailyCals} cal/day</span>
+ </div>
+ <div style={{fontSize:11,color:"#c07040",lineHeight:1.7,marginBottom:12}}>
+ <strong style={{color:"#ff6a00"}}>Nippard's calorie cycling:</strong> More on training days (muscles need fuel), less on rest days (bigger deficit). Same weekly average, more muscle preserved.
+ </div>
+ <div style={{background:"#0a0a0a",borderRadius:10,padding:"10px 14px"}}>
+ <div style={{fontSize:10,color:"#ff6a00",fontWeight:700,marginBottom:8}}>Recalculate at each milestone</div>
+ {weightMilestones.map((m,i)=>{
+ const isCurrent=m<=curWeight&&(i===0||weightMilestones[i-1]>curWeight);
+ const isPast=m>curWeight;
+ return(
+ <div key={m} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,opacity:isPast?0.3:1}}>
+ <span style={{fontSize:11,color:isCurrent?"#ff6a00":"#8a7c6e"}}>{m} lbs{isCurrent?" ←":""}</span>
+ <span style={{fontSize:11,color:"#f0ede8"}}>target {Math.round(calcTDEE(m,userHeightCm,userAge,userProfile?.sex)*0.80)} cal</span>
+ <span style={{fontSize:10,color:"#555"}}>TDEE {calcTDEE(m,userHeightCm,userAge,userProfile?.sex)}</span>
+ </div>
+ );
+ })}
+ </div>
+ </div>
+ <div style={{background:"#111",borderRadius:14,padding:16,border:"1px solid #222",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+ <div><div style={{fontSize:14,fontWeight:700}}>🍗 Daily Protein</div><div style={{fontSize:11,color:"#8a7c6e",marginTop:2}}>Spread across 3–4 meals</div></div>
+ <div style={{fontSize:26,fontWeight:700,color:"#ff6a00"}}>{userGoalWeight}g</div>
+ </div>
+ <div style={{background:"#111",borderRadius:14,padding:16,border:"1px solid #222",marginBottom:16}}>
+ <div style={{fontSize:11,color:"#8a7c6e",marginBottom:10}}>When do you usually train?</div>
+ <div style={{display:"flex",gap:8}}>
+ {[["morning","☀️ Morning"],["evening","🌙 Evening"]].map(([id,label])=>(
+ <button key={id} onClick={()=>setWkTime(id)} style={{flex:1,padding:"10px 0",borderRadius:10,background:wkTime===id?"#ff6a00":"#1a1a1a",color:wkTime===id?"#0a0a0a":"#8a7c6e",fontSize:12,fontWeight:wkTime===id?700:400,border:`1px solid ${wkTime===id?"#ff6a00":"#2a2a2a"}`}}>{label}</button>
+ ))}
+ </div>
+ </div>
+ <div style={{fontSize:9,letterSpacing:3,color:"#8a7c6e",textTransform:"uppercase",marginBottom:10}}>Meal Schedule · {schedule.label}</div>
+ {schedule.meals.map((meal,i)=>{
+ const open=expandedMeal===i;
+ return(
+ <div key={i} onClick={()=>setExpandedMeal(open?null:i)} style={{background:open?"#140a00":"#111",borderRadius:16,padding:16,marginBottom:10,border:`1px solid ${open?"#2a1400":"#222"}`,cursor:"pointer",transition:"all 0.2s"}}>
+ <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+ <div style={{display:"flex",alignItems:"center",gap:12}}>
+ <div style={{background:"#0a0a0a",borderRadius:8,padding:"6px 10px",minWidth:60,textAlign:"center"}}>
+ <div style={{fontSize:10,fontWeight:700,color:meal.tagColor}}>{meal.tag}</div>
+ <div style={{fontSize:9,color:"#555",marginTop:2}}>{meal.time}</div>
+ </div>
+ <div>
+ <div style={{fontWeight:700,fontSize:14}}>{meal.name}</div>
+ <div style={{fontSize:11,color:"#8a7c6e",marginTop:2}}>~{meal.cals} cal · {meal.protein}g protein</div>
+ </div>
+ </div>
+ <div style={{color:"#555",fontSize:14}}>{open?"∧":"›"}</div>
+ </div>
+ {open&&(
+ <div style={{marginTop:14,borderTop:"1px solid #1e1e1e",paddingTop:14}}>
+ <div style={{fontSize:12,color:"#c07040",lineHeight:1.7,marginBottom:14,fontStyle:"italic"}}>{meal.note}</div>
+ <div style={{fontSize:10,letterSpacing:2,color:"#555",textTransform:"uppercase",marginBottom:8}}>Sample Options (pick one)</div>
+ {meal.options.map((opt,j)=>(
+ <div key={j} style={{background:"#0a0a0a",borderRadius:10,padding:"10px 12px",marginBottom:8}}>
+ <div style={{fontSize:13,color:"#f0ede8",lineHeight:1.5,marginBottom:6}}>{opt.name}</div>
+ <div style={{display:"flex",gap:8}}>
+ <span style={{fontSize:10,color:"#ff6a00",background:"#1a0900",padding:"2px 8px",borderRadius:20}}>{opt.cal} cal</span>
+ <span style={{fontSize:10,color:"#4a8a4a",background:"#0a1a0a",padding:"2px 8px",borderRadius:20}}>{opt.p}g protein</span>
+ <span style={{fontSize:10,color:"#5599cc",background:"#0a0f18",padding:"2px 8px",borderRadius:20}}>{opt.c}g carbs</span>
+ </div>
+ </div>
+ ))}
+ </div>
+ )}
+ </div>
+ );
+ })}
+ <div style={{background:"#0d1a0d",borderRadius:14,padding:16,border:"1px solid #1a3a1a",marginTop:4}}>
+ <div style={{fontSize:10,letterSpacing:2,color:"#4a8a4a",textTransform:"uppercase",marginBottom:8}}>The Big Picture</div>
+ <div style={{fontSize:12,color:"#a0c0a0",lineHeight:1.8}}>Times are guidelines, not rules. <strong style={{color:"#c0e0c0"}}>What matters (in order):</strong> total calories → total protein → meal timing. Nail the first two and you'll make great progress.</div>
+ </div>
+ </div>
+ )}
+
+ {/* ── STEPS TAB ── */}
+ {activeTab==="steps"&&(()=>{
+   function saveStep(field,rawVal){
+     const prev=getStepEntry(today);
+     if(field==="regular"){const n=parseInt(rawVal);if(!isNaN(n)&&n>=0)setStepLogs({...stepLogs,[today]:{...prev,regular:n}});}
+     else if(field==="ruck"){const n=parseInt(rawVal);if(!isNaN(n)&&n>=0)setStepLogs({...stepLogs,[today]:{...prev,ruck:n}});}
+     else if(field==="miles"){const n=parseFloat(rawVal);setStepLogs({...stepLogs,[today]:{...prev,ruckMiles:isNaN(n)?null:n}});}
+   }
+   const te=stepEntryToday;
+   return(
+   <div style={{padding:"20px 24px"}}>
+     <div style={{textAlign:"center",marginBottom:20}}>
+       <div style={{position:"relative",display:"inline-block",marginBottom:8}}>
+         <svg width="140" height="140" viewBox="0 0 140 140">
+           <circle cx="70" cy="70" r="56" fill="none" stroke="#1a1a1a" strokeWidth="12"/>
+           {te.ruck>0&&<circle cx="70" cy="70" r="56" fill="none" stroke="#5599cc" strokeWidth="12" strokeLinecap="round"
+             strokeDasharray={`${Math.min((te.regular+te.ruck)/STEP_GOAL,1)*351.9} 351.9`} transform="rotate(-90 70 70)"/>}
+           <circle cx="70" cy="70" r="56" fill="none" stroke={stepsToday>=STEP_GOAL?"#4a8a4a":"#ff6a00"} strokeWidth="12" strokeLinecap="round"
+             strokeDasharray={`${Math.min(te.regular/STEP_GOAL,1)*351.9} 351.9`} transform="rotate(-90 70 70)" style={{transition:"stroke-dasharray 0.5s"}}/>
+         </svg>
+         <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",textAlign:"center"}}>
+           <div style={{fontSize:20,fontWeight:700,color:stepsToday>=STEP_GOAL?"#4a8a4a":"#ff6a00"}}>{stepsToday.toLocaleString()}</div>
+           <div style={{fontSize:10,color:"#8a7c6e"}}>of {STEP_GOAL.toLocaleString()}</div>
+         </div>
+       </div>
+       {te.ruck>0&&<div style={{display:"flex",justifyContent:"center",gap:14,marginBottom:4}}>
+         <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:8,height:8,borderRadius:2,background:"#ff6a00"}}/><span style={{fontSize:11,color:"#8a7c6e"}}>Walk {te.regular.toLocaleString()}</span></div>
+         <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:8,height:8,borderRadius:2,background:"#5599cc"}}/><span style={{fontSize:11,color:"#8a7c6e"}}>Ruck {te.ruck.toLocaleString()}{te.ruckMiles?` · ${te.ruckMiles}mi`:""}</span></div>
+       </div>}
+       <div style={{fontSize:14,color:stepsToday>=STEP_GOAL?"#4a8a4a":"#8a7c6e"}}>{stepsToday>=STEP_GOAL?"Goal hit today":`${(STEP_GOAL-stepsToday).toLocaleString()} to go`}</div>
+     </div>
+
+     <div style={{background:"#111",borderRadius:16,padding:18,border:"1px solid #222",marginBottom:14}}>
+       <div style={{fontSize:9,letterSpacing:2,color:"#8a7c6e",textTransform:"uppercase",marginBottom:14}}>Log Today</div>
+       <div style={{fontSize:11,color:"#8a7c6e",marginBottom:5}}>Walking steps</div>
+       <input type="number" placeholder="e.g. 5000" value={rInp} onChange={e=>setRInp(e.target.value)}
+         onBlur={e=>saveStep("regular",e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveStep("regular",rInp)}
+         style={{width:"100%",background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"12px 14px",color:"#f0ede8",fontSize:16,fontFamily:"inherit",marginBottom:14}}/>
+       <div style={{fontSize:11,color:"#5599cc",marginBottom:5}}>Ruck steps</div>
+       <input type="number" placeholder="e.g. 3000" value={rkInp} onChange={e=>setRkInp(e.target.value)}
+         onBlur={e=>saveStep("ruck",e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveStep("ruck",rkInp)}
+         style={{width:"100%",background:"#1a1a1a",border:"1px solid #0d1a2a",borderRadius:10,padding:"12px 14px",color:"#f0ede8",fontSize:16,fontFamily:"inherit",marginBottom:14}}/>
+       <div style={{fontSize:11,color:"#8a7c6e",marginBottom:5}}>Ruck miles <span style={{color:"#444",fontSize:10}}>(optional)</span></div>
+       <input type="number" step="0.1" placeholder="e.g. 2.5" value={miInp} onChange={e=>setMiInp(e.target.value)}
+         onBlur={e=>saveStep("miles",e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveStep("miles",miInp)}
+         style={{width:"100%",background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:10,padding:"12px 14px",color:"#f0ede8",fontSize:16,fontFamily:"inherit"}}/>
+     </div>
+
+     <div style={{background:"#111",borderRadius:16,padding:18,border:"1px solid #222",marginBottom:14}}>
+       <div style={{fontSize:9,letterSpacing:3,color:"#8a7c6e",textTransform:"uppercase",marginBottom:14}}>Last 7 Days</div>
+       <div style={{display:"flex",gap:5,alignItems:"flex-end",height:80}}>
+         {last7.map((d,i)=>{
+           const total=d.steps,isToday=d.date===today;
+           const regH=d.regular>0?Math.max(Math.min(d.regular/STEP_GOAL,1)*60,3):0;
+           const rkH=d.ruck>0?Math.max(Math.min(d.ruck/STEP_GOAL,1)*60,3):0;
+           return(
+             <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+               <div style={{fontSize:8,color:total>=STEP_GOAL?"#4a8a4a":"#555"}}>{total>0?(total>=1000?`${(total/1000).toFixed(1)}k`:total):""}</div>
+               <div style={{width:"100%",display:"flex",flexDirection:"column",justifyContent:"flex-end",height:60,gap:1}}>
+                 {rkH>0&&<div style={{width:"100%",height:rkH,background:"#5599cc",borderRadius:"2px 2px 0 0"}}/>}
+                 {regH>0&&<div style={{width:"100%",height:regH,background:total>=STEP_GOAL?"#4a8a4a":isToday?"#ff6a00":"#333",borderRadius:rkH?"0":"2px 2px 0 0"}}/>}
+                 {total===0&&<div style={{width:"100%",height:2,background:"#222",borderRadius:2}}/>}
+               </div>
+               <div style={{fontSize:8,color:isToday?"#ff6a00":"#555"}}>{d.label}</div>
+             </div>
+           );
+         })}
+       </div>
+       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid #1a1a1a",marginTop:12,paddingTop:10}}>
+         <div style={{display:"flex",gap:12}}>
+           <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:8,height:8,borderRadius:2,background:"#ff6a00"}}/><span style={{fontSize:10,color:"#555"}}>Walk</span></div>
+           <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:8,height:8,borderRadius:2,background:"#5599cc"}}/><span style={{fontSize:10,color:"#555"}}>Ruck</span></div>
+         </div>
+         <span style={{fontSize:12,fontWeight:700,color:avgSteps>=STEP_GOAL?"#4a8a4a":"#ff6a00"}}>{avgSteps.toLocaleString()} avg</span>
+       </div>
+     </div>
+
+     <div style={{background:"#0d1a0d",borderRadius:16,padding:18,border:"1px solid #1a3a1a"}}>
+       <div style={{fontSize:9,letterSpacing:3,color:"#4a8a4a",textTransform:"uppercase",marginBottom:10}}>Step Targets by Phase</div>
+       {[{weeks:"Weeks 1–4",target:"6,000/day",note:"Build the habit"},{weeks:"Weeks 5–8",target:"8,000/day",note:"Steady fat burn"},{weeks:"Weeks 9+",target:"10,000/day",note:"Accelerate"}].map((p,i)=>(
+         <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+           <span style={{fontSize:11,color:"#8a7c6e"}}>{p.weeks}</span>
+           <span style={{fontSize:12,fontWeight:700,color:"#ff6a00"}}>{p.target}</span>
+           <span style={{fontSize:10,color:"#555"}}>{p.note}</span>
+         </div>
+       ))}
+     </div>
+   </div>
+   );
+ })()}
+ {/* ── CALENDAR TAB ── */}
+ {activeTab==="calendar"&&(()=>{
+ const now=new Date(),dispDate=new Date(now.getFullYear(),now.getMonth()-calOffset,1);
+ const year=dispDate.getFullYear(),month=dispDate.getMonth();
+ const monthName=dispDate.toLocaleString("default",{month:"long"});
+ const firstDay=new Date(year,month,1).getDay(),daysInMonth=new Date(year,month+1,0).getDate();
+ const todayStr=now.toISOString().split("T")[0];
+ const dayColors={"A":"#ff6a00","B":"#5599cc","C":"#4a8a4a","A1":"#ff6a00","B1":"#5599cc","C1":"#4a8a4a","A2":"#e05000","B2":"#4477aa","C2":"#3a7a3a","Upper":"#ff6a00","Lower":"#4a8a4a","Full":"#cc7a00"};
+ const dayLabels=Object.fromEntries(activePlan.days.map(d=>[d.id,d.name]));
+        const dayEmoji=Object.fromEntries(activePlan.days.map(d=>[d.id,d.subtitle?.split("·")[0]?.trim()||d.name.split(" ")[0]]));
+ const dayEmoji={"A":"💪","B":"🦾","C":"🦵"};
+ const cells=[]; for(let i=0;i<firstDay;i++) cells.push(null); for(let d=1;d<=daysInMonth;d++) cells.push(d);
+ const monthStr=`${year}-${String(month+1).padStart(2,"0")}`;
+ const monthWorkouts=Object.entries(logs).filter(([k])=>k.startsWith(monthStr));
+ const monthStepGoal=Object.keys(stepLogs).filter(k=>k.startsWith(monthStr)&&getTotalSteps(k)>=STEP_GOAL).length;
+ return (
+ <div style={{padding:"18px 24px"}}>
+ <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+ <button onClick={()=>setCalOffset(calOffset+1)} style={{background:"#1a1a1a",border:"1px solid #2a2a2a",color:"#f0ede8",borderRadius:10,width:36,height:36,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+ <div style={{textAlign:"center"}}>
+ <div style={{fontSize:17,fontWeight:700}}>{monthName} {year}</div>
+ <div style={{fontSize:10,color:"#8a7c6e",marginTop:2}}>{monthWorkouts.length} workout{monthWorkouts.length!==1?"s":""} · {monthStepGoal} step goal days</div>
+ </div>
+ <button onClick={()=>setCalOffset(Math.max(0,calOffset-1))} style={{background:calOffset===0?"#111":"#1a1a1a",border:"1px solid #2a2a2a",color:calOffset===0?"#333":"#f0ede8",borderRadius:10,width:36,height:36,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+ </div>
+ <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:3}}>
+ {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d=><div key={d} style={{textAlign:"center",fontSize:9,color:"#555",padding:"4px 0",letterSpacing:1}}>{d}</div>)}
+ </div>
+ <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:20}}>
+ {cells.map((day,i)=>{
+ if(!day) return <div key={i}/>;
+ const dateStr=`${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+ const wo=logs[dateStr],steps=stepLogs[dateStr]||0,stepHit=steps>=STEP_GOAL,isToday=dateStr===todayStr;
+ const woColor=wo?dayColors[wo.day]:"transparent";
+ return(
+ <div key={i} style={{aspectRatio:"1",borderRadius:8,background:wo?woColor+"22":isToday?"#1a1a1a":"transparent",border:`1px solid ${wo?woColor:isToday?"#ff6a00":"#1e1e1e"}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",padding:2}}>
+ <div style={{fontSize:11,fontWeight:isToday?700:400,color:wo?woColor:isToday?"#ff6a00":"#888"}}>{day}</div>
+ {wo&&<div style={{width:5,height:5,borderRadius:"50%",background:woColor,marginTop:2}}/>}
+ {stepHit&&<div style={{position:"absolute",bottom:2,right:2,width:5,height:5,borderRadius:"50%",background:"#4a8a4a"}}/>}
+ </div>
+ );
+ })}
+ </div>
+ <div style={{background:"#111",borderRadius:12,padding:"12px 14px",border:"1px solid #222",marginBottom:16}}>
+ <div style={{fontSize:9,letterSpacing:2,color:"#555",textTransform:"uppercase",marginBottom:8}}>Legend</div>
+ <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+ {activePlan.days.map(d=>(
+ <div key={d.id} style={{display:"flex",alignItems:"center",gap:5}}>
+ <div style={{width:10,height:10,borderRadius:3,background:dayColors[d.id]||"#ff6a00"}}/><span style={{fontSize:11,color:"#8a7c6e"}}>{d.name}</span>
+ </div>
+ ))}
+ <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:8,height:8,borderRadius:"50%",background:"#4a8a4a"}}/><span style={{fontSize:11,color:"#8a7c6e"}}>Step goal hit</span></div>
+ </div>
+ </div>
+ <div style={{fontSize:9,letterSpacing:3,color:"#8a7c6e",textTransform:"uppercase",marginBottom:10}}>Workouts this month</div>
+ {monthWorkouts.length===0?(
+ <div style={{background:"#111",borderRadius:12,padding:16,border:"1px solid #222",textAlign:"center",color:"#555",fontSize:13}}>No workouts logged yet this month.</div>
+ ):monthWorkouts.sort((a,b)=>b[0].localeCompare(a[0])).map(([date,wo])=>{
+ const d=new Date(date+"T12:00:00"),label=d.toLocaleDateString("default",{weekday:"short",month:"short",day:"numeric"});
+ const col=dayColors[wo.day],setEntries=wo.sets?Object.entries(wo.sets):[],loggedSets=setEntries.filter(([,v])=>v&&(v.weight||v.reps));
+ return(
+ <div key={date} style={{background:"#111",borderRadius:12,padding:"12px 14px",border:"1px solid #222",marginBottom:8,borderLeft:`3px solid ${col}`}}>
+ <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:loggedSets.length?6:0}}>
+ <div><span style={{fontSize:13,fontWeight:700,color:col}}>{dayLabels[wo.day]}</span><span style={{fontSize:11,color:"#555",marginLeft:8}}>Wk {wo.week+1}</span></div>
+ <span style={{fontSize:11,color:"#8a7c6e"}}>{label}</span>
+ </div>
+ {loggedSets.length>0&&(
+ <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
+ {loggedSets.slice(0,4).map(([k,v])=>{
+ const parts=k.split("_"),exId=parts.slice(0,parts.length-1).join("_"),allExes=allExes,ex=allExes.find(e=>e.id===exId);
+ return ex?<span key={k} style={{fontSize:9,color:"#8a7c6e",background:"#1a1a1a",padding:"2px 7px",borderRadius:20}}>{ex.name.split(" ").slice(-1)[0]}{v.weight?` ${v.weight}lb`:""}</span>:null;
+ })}
+ {loggedSets.length>4&&<span style={{fontSize:9,color:"#555"}}>+{loggedSets.length-4} more</span>}
+ </div>
+ )}
+ <div style={{display:"flex",gap:8,marginTop:8}}>
+ <button onClick={()=>setViewingLog(date)} style={{flex:1,padding:"6px 0",borderRadius:8,background:"#1a1a1a",color:"#8a7c6e",fontSize:11,border:"1px solid #2a2a2a"}}>👁 View</button>
+ <button onClick={()=>{const nl={...logs};delete nl[date];setLogs(nl);}} style={{flex:1,padding:"6px 0",borderRadius:8,background:"#1a1a00",color:"#885500",fontSize:11,border:"1px solid #3a2a00"}}>🗑 Delete</button>
+ </div>
+ </div>
+ );
+ })}
+ <div style={{fontSize:9,letterSpacing:3,color:"#8a7c6e",textTransform:"uppercase",marginBottom:10,marginTop:16}}>All-time</div>
+ <div style={{display:"flex",gap:8,marginBottom:24}}>
+ {[{label:"Total",val:Object.keys(logs).length},{label:"Push",val:Object.values(logs).filter(v=>v.day==="A").length},{label:"Pull",val:Object.values(logs).filter(v=>v.day==="B").length},{label:"Legs",val:Object.values(logs).filter(v=>v.day==="C").length}].map((s,i)=>(
+ <div key={i} style={{flex:1,background:"#111",borderRadius:10,padding:"10px 0",textAlign:"center",border:"1px solid #222"}}>
+ <div style={{fontSize:18,fontWeight:700,color:"#ff6a00"}}>{s.val}</div>
+ <div style={{fontSize:9,color:"#555",marginTop:2,letterSpacing:1,textTransform:"uppercase"}}>{s.label}</div>
+ </div>
+ ))}
+ </div>
+
+ {/* ── BACKUP & RESTORE ── */}
+ <div style={{marginTop:8,marginBottom:8}}>
+ <div onClick={()=>setShowBackup(!showBackup)}
+ style={{background:"#111",borderRadius:12,padding:"13px 16px",border:"1px solid #222",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+ <div>
+ <div style={{fontSize:13,fontWeight:700,color:"#f0ede8"}}>💾 Backup & Restore</div>
+ <div style={{fontSize:10,color:"#8a7c6e",marginTop:2}}>Export your data · Import a previous backup</div>
+ </div>
+ <span style={{color:"#555",fontSize:13}}>{showBackup?"▲":"▼"}</span>
+ </div>
+ {showBackup&&(
+ <div style={{background:"#0f0f0f",borderRadius:"0 0 12px 12px",padding:16,border:"1px solid #222",borderTop:"none"}}>
+ <div style={{fontSize:11,color:"#8a7c6e",lineHeight:1.7,marginBottom:12}}>
+ Your data lives in this browser session. Export regularly so you never lose progress. To restore: paste a backup below and hit Restore.
+ </div>
+ <button onClick={exportData}
+ style={{width:"100%",padding:"14px 0",borderRadius:10,background:"#ff6a00",color:"#0a0a0a",fontWeight:700,fontSize:14,marginBottom:14}}>
+ Download Backup
+ </button>
+ <div style={{fontSize:9,color:"#8a7c6e",letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Restore from backup</div>
+ <textarea
+ placeholder='Paste your backup JSON here...'
+ value={importText}
+ onChange={e=>setImportText(e.target.value)}
+ style={{width:"100%",height:90,background:"#1a1a1a",border:"1px solid #333",borderRadius:8,padding:"10px 12px",color:"#f0ede8",fontSize:12,fontFamily:"monospace",resize:"none",display:"block",boxSizing:"border-box"}}
+ />
+ {importStatus&&(
+ <div style={{fontSize:12,color:importStatus.startsWith("✅")?"#4a8a4a":"#cc4444",marginTop:8,textAlign:"center",fontWeight:700}}>
+ {importStatus}
+ </div>
+ )}
+ <button onClick={importData}
+ style={{width:"100%",padding:"12px 0",borderRadius:10,background:"#1a1a1a",color:"#f0ede8",fontWeight:600,fontSize:13,border:"1px solid #333",marginTop:10}}>
+ Restore from Backup
+ </button>
+ <div style={{fontSize:9,color:"#444",marginTop:10,lineHeight:1.7,textAlign:"center"}}>
+ Data stays private — never leaves your browser.<br/>Bookmark this chat to always find your tracker.
+ </div>
+ </div>
+ )}
+ </div>
+ </div>
+ );
+ })()}
+
+ {/* ── PAST WORKOUT DETAIL MODAL ── */}
+ {viewingLog&&(()=>{
+ const wo = logs[viewingLog];
+ if (!wo) { setViewingLog(null); return null; }
+ const dayColors={"A":"#ff6a00","B":"#5599cc","C":"#4a8a4a","A1":"#ff6a00","B1":"#5599cc","C1":"#4a8a4a","A2":"#e05000","B2":"#4477aa","C2":"#3a7a3a","Upper":"#ff6a00","Lower":"#4a8a4a","Full":"#cc7a00"};
+ const dayLabels2=Object.fromEntries(activePlan.days.map(d=>[d.id,d.name]));
+ const col = dayColors[wo.day]||"#ff6a00";
+ const d = new Date(viewingLog+"T12:00:00");
+ const label = d.toLocaleDateString("default",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+ const allExes = allExes;
+ // Group sets by exercise
+ const byEx = {};
+ if (wo.sets) {
+ Object.entries(wo.sets).forEach(([k,v]) => {
+ if (!v) return;
+ const parts = k.split("_");
+ const exId = parts.slice(0,parts.length-1).join("_");
+ const setIdx = parseInt(parts[parts.length-1]);
+ if (!byEx[exId]) byEx[exId] = [];
+ byEx[exId][setIdx] = v;
+ });
+ }
+ return (
+ <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",zIndex:100,overflowY:"auto",WebkitOverflowScrolling:"touch"}} onClick={()=>setViewingLog(null)}>
+ <div style={{background:"#111",margin:"20px 16px 40px",borderRadius:20,border:`1px solid ${col}`,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+ <div style={{background:"#0a0a0a",padding:"18px 20px",borderBottom:`1px solid ${col}22`}}>
+ <button onClick={()=>setViewingLog(null)} style={{background:"none",color:"#8a7c6e",fontSize:13,marginBottom:8,padding:0}}>← Close</button>
+ <div style={{fontSize:11,color:col,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Week {wo.week+1} · {dayLabels2[wo.day]||wo.day}</div>
+ <div style={{fontSize:16,fontWeight:700,color:"#f0ede8"}}>{label}</div>
+ </div>
+ <div style={{padding:"16px 20px"}}>
+ {Object.keys(byEx).length === 0 ? (
+ <div style={{color:"#555",fontSize:13,textAlign:"center",padding:20}}>No sets logged for this workout.</div>
+ ) : Object.entries(byEx).map(([exId, sets])=>{
+ const ex = allExes.find(e=>e.id===exId);
+ if (!ex) return null;
+ const plannedW = getWeight(ex.startWeight, ex.increment, wo.week, exBests, ex.id);
+ return (
+ <div key={exId} style={{marginBottom:16,background:"#0a0a0a",borderRadius:12,padding:"12px 14px",border:"1px solid #1e1e1e"}}>
+ <div style={{fontWeight:700,fontSize:14,color:"#f0ede8",marginBottom:8}}>{ex.name}</div>
+ <div style={{display:"flex",gap:4,marginBottom:8}}>
+ <span style={{fontSize:9,color:"#555",background:"#1a1a1a",padding:"2px 8px",borderRadius:20,letterSpacing:1}}>PLANNED: {plannedW>0?`${plannedW}lb`:"BW"} × {ex.repsLow}–{ex.repsHigh}</span>
+ </div>
+ {sets.map((s,i)=> s ? (
+ <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+ <span style={{fontSize:11,color:col,fontWeight:700,minWidth:40}}>Set {i+1}</span>
+ <span style={{fontSize:13,color:"#f0ede8",background:"#1a1a1a",padding:"4px 10px",borderRadius:8,minWidth:70,textAlign:"center"}}>{s.weight?`${s.weight} lb`:"BW"}</span>
+ <span style={{fontSize:12,color:"#8a7c6e"}}>×</span>
+ <span style={{fontSize:13,color:s.reps>=ex.repsHigh?"#4a8a4a":s.reps>=ex.repsLow?"#f0ede8":"#cc4444",background:"#1a1a1a",padding:"4px 10px",borderRadius:8,minWidth:60,textAlign:"center"}}>{s.reps?`${s.reps} reps`:"—"}</span>
+ {s.reps>=ex.repsHigh&&<span style={{fontSize:10,color:"#4a8a4a"}}>✓ Top</span>}
+ </div>
+ ) : null)}
+ </div>
+ );
+ })}
+ <button onClick={()=>{const nl={...logs};delete nl[viewingLog];setLogs(nl);setViewingLog(null);}}
+ style={{width:"100%",padding:12,borderRadius:10,background:"#1a0a00",color:"#cc5500",fontSize:13,fontWeight:600,border:"1px solid #3a1500",marginTop:8}}>
+ Delete this workout
+ </button>
+ </div>
+ </div>
+ </div>
+ );
+ })()}
+
+ {/* ── SCIENCE TAB ── */}
+ {activeTab==="science"&&(
+ <div style={{padding:"20px 24px"}}>
+ <div style={{background:"#111",borderRadius:14,padding:16,border:"1px solid #222",marginBottom:16}}>
+ <div style={{fontSize:12,color:"#8a7c6e",lineHeight:1.7}}><strong style={{color:"#ff6a00"}}>Jeff Nippard</strong> — natural pro bodybuilder, evidence-based coach. <strong style={{color:"#5599cc"}}>Andrew Huberman</strong> — Stanford neuroscience professor.</div>
+ </div>
+ {TIPS.map((tip,i)=>{
+ const open=expandedTip===i,tc=tip.who==="Huberman"?"#5599cc":tip.who==="Nippard"?"#ff6a00":"#9060c0";
+ const bg=tip.who==="Huberman"?"#0a0f18":tip.who==="Nippard"?"#1a0900":"#120815";
+ const bc=tip.who==="Huberman"?"#1a2a40":tip.who==="Nippard"?"#2a1100":"#221030";
+ return(
+ <div key={i} onClick={()=>setExpandedTip(open?null:i)} style={{background:open?bg:"#111",borderRadius:14,padding:"15px 17px",marginBottom:10,border:`1px solid ${open?bc:"#222"}`,cursor:"pointer",transition:"all 0.2s"}}>
+ <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+ <div style={{display:"flex",alignItems:"center",gap:12}}>
+ <span style={{fontSize:22}}>{tip.icon}</span>
+ <div><div style={{fontWeight:700,fontSize:14}}>{tip.title}</div><div style={{fontSize:9,color:tc,marginTop:2,letterSpacing:2,textTransform:"uppercase"}}>{tip.who}</div></div>
+ </div>
+ <div style={{color:"#555",fontSize:14}}>{open?"∧":"›"}</div>
+ </div>
+ {open&&<div style={{marginTop:12,fontSize:13,color:"#c0b8af",lineHeight:1.8,borderTop:`1px solid ${bc}`,paddingTop:12}}>{tip.body}</div>}
+ </div>
+ );
+ })}
+ </div>
+ )}
+ </div>
+ )}
+
+ {/* ══ BOTTOM NAV ══════════════════════════════════════════ */}
+ {screen==="home"&&(
+ <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#0f0f0f",borderTop:"1px solid #1e1e1e",display:"flex",padding:"10px 0 20px"}}>
+ {[["training","🏋️","Train"],["nutrition","🍽️","Eat"],["steps","🚶","Steps"],["calendar","📅","Log"],["science","🧪","Science"]].map(([id,icon,label])=>(
+ <button key={id} onClick={()=>setActiveTab(id)} style={{flex:1,background:"none",color:activeTab===id?"#ff6a00":"#444",fontSize:11,letterSpacing:1,textTransform:"uppercase",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+ <span style={{fontSize:24}}>{icon}</span>{label}
+ </button>
+ ))}
+ </div>
+ )}
+ </div>
+ );
+}
+
+
+ const root = ReactDOM.createRoot(document.getElementById('root'));
+ root.render(<App/>);
+ </script>
+</body>
+</html>
